@@ -729,10 +729,7 @@ function mountDistributionCards() {
     const card = element('div', 'min-w-0 rounded-md border border-line bg-field px-2.5 py-2 first:border-brand/35 first:bg-brand/10')
     const week = element('dt', 'text-xs font-semibold', 'Week ' + weekNumber)
     const content = element('dd', 'mt-1 grid gap-2')
-    const total = element('span', 'min-w-0 wrap-anywhere text-xs text-muted tabular-nums')
-    total.dataset.screeningTotal = ''
-    content.append(total)
-    const meters = [['Owned used', 'bg-muted/85'], ['To rent', 'bg-brand']].map(([label, tone]) => {
+    const meters = [['Owned capacity', 'bg-muted/85'], ['To rent', 'bg-brand']].map(([label, tone]) => {
       const meter = element('div', 'grid gap-1')
       const row = element('div', 'flex flex-wrap items-baseline justify-between gap-x-1 text-xs')
       const amount = element('span', 'min-w-0 wrap-anywhere font-semibold tabular-nums')
@@ -749,35 +746,28 @@ function mountDistributionCards() {
     })
     card.append(week, content)
     grid.append(card)
-    return { total, meters }
+    return meters
   })
 }
 
-function refreshDistribution(scoresValid, plan, mixValid) {
+function refreshDistribution(commercialValid) {
   const ownedValid = validNumber(owned)
-  const weeks = scoresValid && ownedValid && mixValid
-    ? estimateScreenings(selection, commercial.valueAsNumber, artistic.valueAsNumber, owned.valueAsNumber, plan) : []
-  const peak = Math.max(1, ...weeks.map(week => week.target))
+  const capacity = owned.valueAsNumber
+  const rentals = commercialValid && ownedValid
+    ? estimateScreenings(commercial.valueAsNumber, capacity) : []
 
   owned.setAttribute('aria-invalid', String(!ownedValid))
   const error = byId('distribution-error')
-  error.hidden = ownedValid && scoresValid && mixValid
-  error.textContent = !mixValid ? 'Set your genre mix to 100% to update the forecast.'
-    : !scoresValid ? 'Enter Commercial and Artistic scores from 0 to 10.'
-      : !ownedValid ? 'Enter your owned screenings as a whole number of 0 or more.' : ''
+  error.hidden = ownedValid && commercialValid
+  error.textContent = !commercialValid ? 'Enter a Commercial score from 0 to 10.'
+    : !ownedValid ? 'Enter your owned screenings as a whole number of 0 or more.' : ''
+  byId('weeks').hidden = rentals.length === 0
+  if (!rentals.length) return
 
-  const agency = plan?.agencies[0]
-  const campaign = byId('distribution-campaign')
-  campaign.textContent = mixValid ? 'Add story elements to include the recommended campaign.' : ''
-  if (plan && agency) {
-    const totalWeeks = plan.duration.reduce((sum, weeks) => sum + weeks, 0)
-    campaign.textContent = 'Assumes ' + agency.name + ' runs the suggested ' + totalWeeks + '-week campaign.'
-  }
-  byId('weeks').hidden = weeks.length === 0
-  for (const [weekIndex, { target, toRent }] of weeks.entries()) {
-    const { total, meters } = distributionCards[weekIndex]
-    total.textContent = target.toLocaleString('en-US') + ' total'
-    for (const [index, value] of [target - toRent, toRent].entries()) {
+  const peak = Math.max(1, capacity, ...rentals)
+  for (const [weekIndex, toRent] of rentals.entries()) {
+    const meters = distributionCards[weekIndex]
+    for (const [index, value] of [capacity, toRent].entries()) {
       const { amount, bar } = meters[index]
       amount.textContent = value.toLocaleString('en-US')
       bar.style.setProperty('--screening-ratio', String(value / peak))
@@ -808,7 +798,7 @@ function refreshResults() {
   totalLabel.dataset.valid = String(mixValid)
   const plan = scoresValid && mixValid && selection.size ? planCampaign(selection, score, artistic.valueAsNumber) : null
   renderPlan(plan, mixValid)
-  refreshDistribution(scoresValid, plan, mixValid)
+  refreshDistribution(commercialValid)
 }
 
 function refreshSelection() {

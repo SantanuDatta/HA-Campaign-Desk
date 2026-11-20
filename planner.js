@@ -58,57 +58,14 @@ function planCampaign(selection, commercial, artistic) {
   return { lean, audiences, agencies, holidays, duration: [6, 4, commercial >= 9 ? 4 : 0] }
 }
 
-// Release defaults from Hollywood Animal Steam build 26402049.
-// Group weights are in the order baseline, artistic, commercial.
-const releaseGroupWeights = {
-  TM: [0.15, 0.05, 0.20],
-  TF: [0.15, 0.05, 0.20],
-  YM: [0.30, 0.40, 0.25],
-  YF: [0.30, 0.30, 0.25],
-  AM: [0.05, 0.10, 0.10],
-  AF: [0.05, 0.10, 0.10]
-}
-const adReachByWeek = [0.25, 0.45, 0.60, 0.70, 0.80, 0.90, 0.95, 1, 1, 0.95, 0.90, 0.85, 0.75, 0.60, 0.30, 0.10]
-const adEfficiencyByLevel = [0.15, 0.30, 0.50]
-const adFadeAfterCampaign = [0.95, 0.85, 0.70, 0.20]
-const openingWeekReachIndex = 8
-const defaultAudienceFractions = [0.10, 0.05, 0.05]
-const releaseMarket = 30_000_000
-const viewersPerScreening = 400
-
-function estimateScreenings(selection, commercial, artistic, owned, plan) {
-  const agency = plan?.agencies[0]
-  const preRelease = plan?.duration[0] ?? 0
-  const campaignLength = plan?.duration.reduce((sum, weeks) => sum + weeks, 0) ?? 0
-  const art = artistic / 10
-  const com = commercial / 10
-  // The final scores are available, so use their mean as a proxy for the in-game baseline.
-  const baseline = (art + com) / 2
-  const audienceShares = [baseline * 0.55, art * 0.15, com * 0.30]
-  const retentionModifiers = [
-    1 - Math.max(0, art - com),
-    1 - Math.max(0, com - art),
-    1 - Math.max(0, art - com)
-  ]
-  const groups = audienceAffinities(selection).map(({ id, score }) => ({
-    retention: score,
-    shares: releaseGroupWeights[id].map((weight, index) => weight * audienceShares[index]),
-    adScoreTypes: agency?.adAudiences[id] ?? []
-  }))
+// The release 2.18.0 distribution formula decays the Week 2 rental gap.
+function estimateScreenings(commercial, owned) {
+  const openingGap = Math.max(0, commercial * 2 * 1000 - owned)
+  let rentalGap = Math.max(0, commercial * 1000 - owned)
 
   return Array.from({ length: 8 }, (_, week) => {
-    const visibility = adReachByWeek[openingWeekReachIndex + week]
-    const campaignWeek = preRelease + week
-    const activeReach = adReachByWeek[Math.min(campaignWeek, campaignLength)] ?? 0
-    const fade = campaignWeek < campaignLength ? 1 : (adFadeAfterCampaign[campaignWeek - campaignLength] ?? 0)
-    const adBoost = agency ? adEfficiencyByLevel[agency.level - 1] * activeReach * fade : 0
-    const share = groups.reduce((sum, { retention, shares, adScoreTypes }) =>
-      sum + shares.reduce((subtotal, share, index) => {
-        const reach = defaultAudienceFractions[index] * visibility + (adScoreTypes.includes(index) ? adBoost : 0)
-        return subtotal + share * reach * (retention * retentionModifiers[index]) ** week
-      }, 0), 0)
-    const demand = releaseMarket * share
-    const target = Math.max(0, Math.ceil(demand / viewersPerScreening - 1e-9))
-    return { target, toRent: Math.max(0, target - owned) }
+    if (week > 1) rentalGap *= 0.8
+    const round = week < 4 ? Math.ceil : Math.floor
+    return round(week === 0 ? openingGap : rentalGap)
   })
 }
