@@ -15,7 +15,6 @@ const quickBar = byId('quick-bar')
 const commercial = byId('commercial')
 const artistic = byId('artistic')
 const owned = byId('owned')
-const quickGenres = byId('quick-genres')
 const sortedTags = [...GUIDE.tags].sort((a, b) => a.name.localeCompare(b.name)).map(tag => ({
   ...tag, searchText: (tag.name + ' ' + tag.id.replaceAll('_', ' ') + ' ' + tag.category).toLowerCase()
 }))
@@ -82,6 +81,27 @@ function save() {
   }
 }
 
+function selectedGenres() {
+  return [...selection.keys()].filter(id => tagsById.get(id).category === 'Genre')
+}
+
+function distributeGenrePercentages(ids, total = 100, { evenly = false, weights = selection } = {}) {
+  if (!ids.length) return
+  const previousTotal = ids.reduce((sum, id) => sum + weights.get(id), 0)
+  const shares = ids.map(id => {
+    const exact = evenly || !previousTotal
+      ? total / ids.length
+      : total * weights.get(id) / previousTotal
+    const percentage = Math.floor(exact)
+    return { id, percentage, remainder: exact - percentage }
+  })
+  const remaining = total - shares.reduce((sum, share) => sum + share.percentage, 0)
+  shares.sort((a, b) => b.remainder - a.remainder)
+  shares.forEach(({ id, percentage }, index) => {
+    selection.set(id, percentage + Number(index < remaining))
+  })
+}
+
 function restore() {
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey))
@@ -93,9 +113,10 @@ function restore() {
         selection.set(id, share)
       }
     }
+    distributeGenrePercentages(selectedGenres())
     commercial.value = saved.commercial ?? '5.0'
     artistic.value = saved.artistic ?? '5.0'
-    owned.value = saved.owned ?? '3185'
+    owned.value = saved.owned ?? owned.defaultValue
     showingExample = saved.showingExample === true
     return true
   } catch {
@@ -120,8 +141,22 @@ function announce(message) {
 }
 
 function setTagSelected(id, selected) {
+  const previousGenres = selectedGenres()
+  const previousShares = previousGenres.map(genre => selection.get(genre))
+  const wasEven = previousGenres.length < 2 || Math.max(...previousShares) - Math.min(...previousShares) <= 1
   if (selected) selection.set(id, selection.get(id) ?? 100)
   else selection.delete(id)
+
+  if (tagsById.get(id).category === 'Genre') {
+    const genres = selectedGenres()
+    if (selected && !wasEven) {
+      const newShare = Math.round(100 / genres.length)
+      selection.set(id, newShare)
+      distributeGenrePercentages(previousGenres, 100 - newShare)
+    } else {
+      distributeGenrePercentages(genres, 100, { evenly: wasEven })
+    }
+  }
   showingExample = false
   renderSelection()
   refreshResults()
@@ -242,7 +277,6 @@ function renderSelection() {
   list.replaceChildren()
   byId('selected-count').textContent = selection.size || ''
   byId('selected-tags').hidden = selection.size === 0
-  quickGenres.hidden = selection.size > 0
   renderGenreMix()
   for (const id of selection.keys()) {
     const tag = tagsById.get(id)
@@ -276,6 +310,7 @@ function mountNumberStepper(input, label, {
   const arrows = element('div', 'grid shrink-0 grid-rows-2 divide-y divide-control border-l border-control')
   const min = input.min === '' ? -Infinity : Number(input.min)
   const max = input.max === '' ? Infinity : Number(input.max)
+  const nativeSteps = Math.round(increment / Number(input.step))
 
   const sync = () => {
     const current = read()
@@ -285,8 +320,8 @@ function mountNumberStepper(input, label, {
   const step = direction => {
     if (adjust) adjust(direction * increment)
     else {
-      if (direction > 0) input.stepUp()
-      else input.stepDown()
+      if (direction > 0) input.stepUp(nativeSteps)
+      else input.stepDown(nativeSteps)
       input.dispatchEvent(new Event('input', { bubbles: true }))
       announce(label + ' ' + input.value + '.')
     }
@@ -309,7 +344,7 @@ function mountNumberStepper(input, label, {
   input.replaceWith(control)
   control.append(input, arrows)
   input.addEventListener('input', sync)
-  if (adjust) input.addEventListener('keydown', event => {
+  if (adjust || nativeSteps > 1) input.addEventListener('keydown', event => {
     if (event.isComposing || (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')) return
     event.preventDefault()
     step(event.key === 'ArrowUp' ? 1 : -1)
@@ -319,50 +354,67 @@ function mountNumberStepper(input, label, {
 }
 
 function renderGenreMix() {
-  const genres = [...selection].filter(([id]) => tagsById.get(id).category === 'Genre')
+  const genres = selectedGenres()
   const fields = byId('genre-weights')
   fields.replaceChildren()
-  const showMix = genres.length > 1 || genres.some(([, weight]) => weight !== 100)
-  byId('genre-mix').hidden = !showMix
-  if (!showMix) return
+  byId('genre-mix').hidden = genres.length < 2
+  if (genres.length < 2) return
 
-  for (const [id, weight] of genres) {
+  const syncFields = new Map()
+  for (const id of genres) {
     const name = tagsById.get(id).name
     const field = element('div', 'flex min-w-0 items-center justify-between gap-1 rounded-md border border-line bg-field px-1.5 text-sm font-medium')
     const label = element('label', 'min-w-0 wrap-anywhere', name)
     const input = element('input', 'px-1 text-center')
-    Object.assign(input, { id: 'genre-weight-' + id, type: 'number', min: '0', max: '100', step: '1', value: weight, inputMode: 'numeric' })
+    Object.assign(input, { id: 'genre-weight-' + id, type: 'number', min: '0', max: '100', step: '1', value: selection.get(id), inputMode: 'numeric' })
     label.htmlFor = input.id
-    input.setAttribute('aria-label', name + ' genre weight')
+    input.setAttribute('aria-label', name + ' genre percentage')
 
-    const saveWeight = value => {
+    let editStart
+    const savePercentage = (value, weights) => {
       if (selection.get(id) === value) return
       selection.set(id, value)
+      distributeGenrePercentages(genres.filter(genre => genre !== id), 100 - value, { weights })
+      syncFields.forEach((sync, genre) => {
+        if (genre !== id) sync()
+      })
       showingExample = false
       refreshResults()
     }
-    const adjustWeight = amount => {
+    const adjustPercentage = amount => {
+      editStart = undefined
       const current = selection.get(id)
       const next = Math.min(100, Math.max(0, current + amount))
       input.value = next
       input.setAttribute('aria-invalid', 'false')
-      if (next === current) return
-      saveWeight(next)
-      announce(name + ' genre weight ' + next + '.')
+      savePercentage(next)
+      announce(name + ' genre percentage ' + next + '%.')
+    }
+    const finishEditing = () => {
+      editStart = undefined
+      syncFields.get(id)()
     }
     input.addEventListener('input', () => {
       const valid = validNumber(input)
       input.setAttribute('aria-invalid', String(!valid))
-      if (valid) saveWeight(input.valueAsNumber)
+      if (!valid) return
+      // Keep peer proportions stable as a player types through intermediate values.
+      editStart ??= new Map(selection)
+      savePercentage(input.valueAsNumber, editStart)
     })
-    input.addEventListener('blur', () => {
-      input.value = selection.get(id)
-      input.setAttribute('aria-invalid', 'false')
+    input.addEventListener('blur', finishEditing)
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Enter' && !event.isComposing) finishEditing()
     })
     field.append(label, input)
     fields.append(field)
-    mountNumberStepper(input, name + ' genre weight', {
-      width: 'my-1 w-19 shrink-0', increment: 5, read: () => selection.get(id), adjust: adjustWeight
+    const syncStepper = mountNumberStepper(input, name + ' genre percentage', {
+      width: 'my-1 w-19 shrink-0', increment: 5, read: () => selection.get(id), adjust: adjustPercentage
+    })
+    syncFields.set(id, () => {
+      input.value = selection.get(id)
+      input.setAttribute('aria-invalid', 'false')
+      syncStepper()
     })
   }
 }
@@ -510,25 +562,41 @@ function validNumber(input) {
 function renderDistribution(weeks) {
   const grid = byId('weeks')
   grid.hidden = weeks.length === 0
-  const peak = Math.max(1, ...weeks)
-  for (const [index, value] of weeks.entries()) {
-    let tile = grid.children[index]
-    if (!tile) {
-      tile = element('div', 'min-w-0 rounded-md border border-line bg-field px-1.5 py-2 first:border-brand/35 first:bg-brand/10 sm:px-2')
-      const amount = element('span', 'block wrap-anywhere text-[.8125rem] leading-tight font-semibold tabular-nums min-[360px]:text-sm')
-      amount.dataset.screenings = ''
-      const bar = element('span', 'block h-full w-full origin-left scale-x-(--screening-ratio) rounded-full bg-brand/85 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-ui')
-      bar.dataset.screeningBar = ''
-      const track = element('span', 'mt-2 block h-1 overflow-hidden rounded-full bg-control')
-      track.setAttribute('aria-hidden', 'true')
-      track.append(bar)
-      const content = element('dd', 'mt-1')
-      content.append(amount, track)
-      tile.append(element('dt', 'text-xs text-muted', 'Week ' + (index + 1)), content)
-      grid.append(tile)
+  const peak = Math.max(1, ...weeks.map(week => week.target))
+  for (const [index, { target, toRent }] of weeks.entries()) {
+    let card = grid.children[index]
+    if (!card) {
+      card = element('div', 'min-w-0 rounded-md border border-line bg-field px-2.5 py-2 first:border-brand/35 first:bg-brand/10')
+      const week = element('dt', 'text-xs font-semibold', 'Week ' + (index + 1))
+      const content = element('dd', 'mt-1 grid gap-2')
+      const total = element('span', 'text-xs text-muted tabular-nums')
+      total.dataset.screeningTotal = ''
+      content.append(total)
+      for (const [label, tone] of [['Owned used', 'bg-muted/85'], ['To rent', 'bg-brand']]) {
+        const meter = element('div', 'grid gap-1')
+        meter.dataset.screeningMeter = ''
+        const row = element('div', 'flex flex-wrap items-baseline justify-between gap-x-1 text-xs')
+        const amount = element('span', 'font-semibold tabular-nums')
+        amount.dataset.screenings = ''
+        row.append(element('span', 'text-muted', label), amount)
+        const track = element('span', 'block h-1 overflow-hidden rounded-full bg-control')
+        track.setAttribute('aria-hidden', 'true')
+        const bar = element('span', 'block h-full w-full origin-left scale-x-(--screening-ratio) rounded-full motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-ui ' + tone)
+        bar.dataset.screeningBar = ''
+        track.append(bar)
+        meter.append(row, track)
+        content.append(meter)
+      }
+      card.append(week, content)
+      grid.append(card)
     }
-    tile.querySelector('[data-screenings]').textContent = value.toLocaleString('en-US')
-    tile.querySelector('[data-screening-bar]').style.setProperty('--screening-ratio', String(value / peak))
+    card.querySelector('[data-screening-total]').textContent = target.toLocaleString('en-US') + ' total'
+    const meters = card.querySelectorAll('[data-screening-meter]')
+    for (const [index, value] of [target - toRent, toRent].entries()) {
+      const meter = meters[index]
+      meter.querySelector('[data-screenings]').textContent = value.toLocaleString('en-US')
+      meter.querySelector('[data-screening-bar]').style.setProperty('--screening-ratio', String(value / peak))
+    }
   }
 }
 
@@ -537,7 +605,6 @@ function refreshResults() {
   const artisticValid = validNumber(artistic)
   const ownedValid = validNumber(owned)
   const scoresValid = commercialValid && artisticValid
-  const distributionValid = commercialValid && ownedValid
   const score = commercial.valueAsNumber
   const hasEdits = selection.size > 0 || score !== 5 || artistic.valueAsNumber !== 5
   byId('film-caption').hidden = !showingExample
@@ -549,11 +616,17 @@ function refreshResults() {
   const scoreError = byId('score-error')
   scoreError.hidden = scoresValid
   const fieldName = commercialValid ? 'the artistic score' : artisticValid ? 'the commercial score' : 'both scores'
-  scoreError.textContent = scoresValid ? '' : 'Enter ' + fieldName + ' from 0 to 10 in steps of 0.1.'
-  byId('distribution-error').hidden = distributionValid
+  scoreError.textContent = scoresValid ? '' : 'Enter ' + fieldName + ' from 0 to 10 with up to two decimal places.'
+  const distributionError = byId('distribution-error')
+  distributionError.hidden = commercialValid && ownedValid
+  distributionError.textContent = commercialValid
+    ? 'Enter your owned screenings as a whole number of 0 or more.'
+    : 'Enter a commercial score from 0 to 10 to see the forecast.'
   renderPlan(scoresValid && selection.size ? planCampaign(selection, score, artistic.valueAsNumber) : null)
-  const weeks = distributionValid ? estimateScreenings(score, owned.valueAsNumber) : []
-  renderDistribution(weeks)
+  renderDistribution(commercialValid && ownedValid ? estimateScreenings(score, owned.valueAsNumber) : [])
+  const distributionScore = byId('distribution-score')
+  distributionScore.hidden = !commercialValid
+  distributionScore.textContent = commercialValid ? 'Using a commercial score of ' + commercial.value + ' out of 10.' : ''
   save()
 }
 
@@ -576,24 +649,9 @@ for (const agency of [...GUIDE.agencies].sort((a, b) => a.name.localeCompare(b.n
   byId('directory-rows').append(row)
 }
 
-const genreIcons = { ACTION: 'zap', COMEDY: 'laugh', DRAMA: 'drama', ROMANCE: 'heart' }
-for (const [id, icon] of Object.entries(genreIcons)) {
-  const name = tagsById.get(id).name
-  const button = element('button', 'outline-action inline-flex items-center justify-start gap-2 text-ink')
-  button.append(lucideIcon(icon), element('span', '', name))
-  button.type = 'button'
-  button.setAttribute('aria-label', 'Add ' + name)
-  button.addEventListener('click', () => {
-    search.value = ''
-    closePicker()
-    setTagSelected(id, true)
-    tagToggle.focus({ preventScroll: true })
-  })
-  quickGenres.append(button)
-}
 const syncPrimarySteppers = [
-  mountNumberStepper(commercial, 'commercial score'),
-  mountNumberStepper(artistic, 'artistic score'),
+  mountNumberStepper(commercial, 'commercial score', { increment: 0.1 }),
+  mountNumberStepper(artistic, 'artistic score', { increment: 0.1 }),
   mountNumberStepper(owned, 'owned screenings', { width: 'w-30' })
 ]
 restore()

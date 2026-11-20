@@ -92,28 +92,6 @@
 <body class="max-lg:has-[#quick-bar:not([hidden])]:pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
   <!-- Lucide Static 1.76.0. See assets/lucide-LICENSE.txt. -->
   <svg class="pointer-events-none absolute size-0 overflow-hidden" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-    <symbol id="icon-zap" viewBox="0 0 24 24">
-      <path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z" />
-    </symbol>
-    <symbol id="icon-laugh" viewBox="0 0 24 24">
-      <path d="M15 10V9" />
-      <path d="M7.084 14.302a5.12 5.12 0 009.833 0 .24.24 0 00-.235-.302H7.32a.24.24 0 00-.235.302" />
-      <path d="M9 10V9" />
-      <circle cx="12" cy="12" r="10" />
-    </symbol>
-    <symbol id="icon-drama" viewBox="0 0 24 24">
-      <path d="M10 11h.01" />
-      <path d="M14 6h.01" />
-      <path d="M18 6h.01" />
-      <path d="M6.5 13.1h.01" />
-      <path d="M22 5c0 9-4 12-6 12s-6-3-6-12c0-2 2-3 6-3s6 1 6 3" />
-      <path d="M17.4 9.9c-.8.8-2 .8-2.8 0" />
-      <path d="M10.1 7.1C9 7.2 7.7 7.7 6 8.6c-3.5 2-4.7 3.9-3.7 5.6 4.5 7.8 9.5 8.4 11.2 7.4.9-.5 1.9-2.1 1.9-4.7" />
-      <path d="M9.1 16.5c.3-1.1 1.4-1.7 2.4-1.4" />
-    </symbol>
-    <symbol id="icon-heart" viewBox="0 0 24 24">
-      <path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5" />
-    </symbol>
     <symbol id="icon-search" viewBox="0 0 24 24">
       <path d="m21 21-4.34-4.34" />
       <circle cx="11" cy="11" r="8" />
@@ -143,12 +121,6 @@
       <path d="M13 5v2" />
       <path d="M13 17v2" />
       <path d="M13 11v2" />
-    </symbol>
-    <symbol id="icon-armchair" viewBox="0 0 24 24">
-      <path d="M19 9V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v3" />
-      <path d="M3 16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v1.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5V11a2 2 0 0 0-4 0z" />
-      <path d="M5 18v2" />
-      <path d="M19 18v2" />
     </symbol>
     <symbol id="icon-sliders-horizontal" viewBox="0 0 24 24">
       <path d="M10 5H3" />
@@ -247,20 +219,20 @@
                 </div>
               </div>
             </div>
-            <div class="mt-2 grid grid-cols-2 gap-1.5" id="quick-genres" role="group" aria-label="Quick-add genres"></div>
           </div>
           <div class="min-w-0" role="group" aria-labelledby="score-title">
             <h3 class="flex items-center gap-1.5 text-sm font-bold" id="score-title">
               <svg class="ui-icon size-3.5 text-muted" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-sliders-horizontal"></use></svg> Film scores <span class="font-normal text-muted">(out of 10)</span>
             </h3>
+            <p class="mt-1 text-sm text-muted">Enter the scores from your film in the game.</p>
             <div class="mt-2 grid grid-cols-2 gap-2">
               <div class="grid min-w-0 gap-1">
                 <label class="text-sm font-medium text-muted" for="commercial">Commercial</label>
-                <input class="px-3 font-semibold text-ink" id="commercial" type="number" min="0" max="10" step="0.1" value="5.0" inputmode="decimal" aria-describedby="score-error">
+                <input class="px-3 font-semibold text-ink" id="commercial" type="number" min="0" max="10" step="0.01" value="5.0" inputmode="decimal" aria-describedby="score-error">
               </div>
               <div class="grid min-w-0 gap-1">
                 <label class="text-sm font-medium text-muted" for="artistic">Artistic</label>
-                <input class="px-3 font-semibold text-ink" id="artistic" type="number" min="0" max="10" step="0.1" value="5.0" inputmode="decimal" aria-describedby="score-error">
+                <input class="px-3 font-semibold text-ink" id="artistic" type="number" min="0" max="10" step="0.01" value="5.0" inputmode="decimal" aria-describedby="score-error">
               </div>
             </div>
             <p class="mt-2 text-sm text-error" id="score-error" hidden></p>
@@ -271,13 +243,13 @@
           <ul class="flex min-w-0 flex-wrap gap-1.5" id="selection" aria-label="Selected story elements"></ul>
         </div>
         <fieldset class="mt-3" id="genre-mix" aria-describedby="genre-hint" hidden>
-          <legend class="text-sm font-bold">Genre mix</legend>
-          <p class="mt-1 text-sm text-muted" id="genre-hint">Set weights from 0 to 100. The arrows change a weight by 5. Equal weights split the mix evenly.</p>
+          <legend class="text-sm font-bold">Genre mix (%)</legend>
+          <p class="mt-1 text-sm text-muted" id="genre-hint">Genres share 100% automatically. Edit a percentage and the others adjust. The arrows change it by 5 points.</p>
           <div class="mt-2 grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-2" id="genre-weights"></div>
         </fieldset>
       </section>
 
-      <section class="min-w-0 border-t border-line pt-5 pb-6 md:border-t-0 md:pl-6 lg:pl-8" id="recommendations" tabindex="-1" aria-labelledby="agency-title">
+      <section class="min-w-0 border-t border-line pt-5 pb-6 max-md:has-[#breakdown:not([hidden])]:pb-0 md:border-t-0 md:pl-6 lg:pl-8" id="recommendations" tabindex="-1" aria-labelledby="agency-title">
         <div class="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <h2 class="flex items-center gap-2.5 text-xl font-semibold tracking-tight" id="agency-title">
             <svg class="ui-icon size-5 text-brand" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-megaphone"></use></svg> Advertiser picks
@@ -290,38 +262,41 @@
               <svg class="ui-icon size-3.5" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-check"></use></svg> Top match
             </h3>
             <p class="font-semibold" id="result-message">Add a story tag to get started.</p>
-            <p class="mt-1 max-w-[54ch] text-sm leading-6 text-muted" id="empty-guidance">Pick a genre or search for a story element. Use the scores from your film to refine the results.</p>
+            <p class="mt-1 max-w-[54ch] text-sm leading-6 text-muted" id="empty-guidance">Use Story elements to add genres and other tags. Use the scores from your film to refine the results.</p>
             <button class="outline-action mt-3 text-brand" type="button" id="example">Try an example</button>
             <ol id="top-pick" aria-label="Top advertiser"></ol>
             <dl class="mt-3 grid gap-x-4 gap-y-2 border-t border-line pt-3 min-[480px]:grid-cols-3" id="brief" aria-label="Campaign at a glance" hidden></dl>
           </div>
-          <section class="min-w-0 rounded-md border border-line bg-panel px-4 py-4 sm:px-5" id="distribution" tabindex="-1" aria-labelledby="distribution-title">
-            <div class="flex flex-wrap items-start justify-between gap-x-5 gap-y-3">
-              <div class="min-w-0 flex-1 basis-48">
-                <h3 class="flex items-center gap-2 text-base font-semibold" id="distribution-title">
-                  <svg class="ui-icon size-4.5 text-brand" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-ticket"></use></svg> Distribution calculator
-                </h3>
-                <p class="mt-1 text-sm text-muted">Extra screenings to book based on your commercial score and owned capacity.</p>
-              </div>
-              <div class="ml-auto grid justify-items-end gap-1.5">
-                <label class="flex items-center gap-1.5 text-right text-sm font-medium text-muted" for="owned">
-                  <svg class="ui-icon size-3.5" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-armchair"></use></svg> Owned screenings
-                </label>
-                <input class="px-3 font-semibold" type="number" id="owned" min="0" step="1" value="3185" inputmode="numeric" aria-describedby="distribution-error">
-              </div>
-            </div>
-            <p class="mt-2 text-sm text-error" id="distribution-error" hidden>Enter a valid commercial score and a nonnegative whole number of owned screenings.</p>
-            <dl id="weeks" class="mt-4 grid grid-cols-4 gap-1.5 sm:gap-2 min-[1100px]:grid-cols-8" aria-label="Extra screenings by week"></dl>
-          </section>
           <div class="min-w-0" id="alternatives" hidden>
             <h3 class="border-b border-line pb-2 text-sm font-semibold text-muted">Other matches</h3>
             <ol id="other-picks" start="2" aria-label="Other ranked advertisers"></ol>
             <button class="ghost-action mt-1 -ml-2.5" type="button" id="more" aria-controls="other-picks" aria-expanded="false" hidden></button>
           </div>
+          <section class="@container min-w-0 rounded-md border border-line bg-panel px-4 py-4 sm:px-5" id="distribution" tabindex="-1" aria-labelledby="distribution-title">
+            <div class="flex flex-wrap items-start justify-between gap-x-5 gap-y-3">
+              <div class="min-w-0 flex-1 basis-52">
+                <h3 class="flex items-center gap-2 text-base font-semibold" id="distribution-title">
+                  <svg class="ui-icon size-4.5 text-brand" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-ticket"></use></svg> Distribution calculator
+                </h3>
+                <p class="mt-1 text-sm text-muted" id="distribution-score" hidden></p>
+              </div>
+              <div class="grid gap-1.5">
+                <label class="text-sm font-medium text-ink" for="owned">Owned screenings</label>
+                <input class="px-3 font-semibold" type="number" id="owned" min="0" step="1" value="3185" inputmode="numeric" aria-describedby="owned-help distribution-error">
+              </div>
+            </div>
+            <p class="mt-2 text-sm text-muted" id="owned-help">Enter the screenings you can assign to this film each week.</p>
+            <p class="mt-2 text-sm text-error" id="distribution-error" hidden></p>
+            <dl class="mt-4 grid grid-cols-2 gap-2 @min-[30rem]:grid-cols-4" id="weeks" aria-label="Weekly screenings and rentals" hidden></dl>
+            <details class="group mt-2 border-t border-line">
+              <summary class="disclosure-trigger text-sm font-medium text-muted">How the estimate works <span class="disclosure-chevron" aria-hidden="true"></span></summary>
+              <p class="pb-2 text-sm text-muted">Week 1 starts at 2,000 screenings per commercial score point. Week 2 starts at 1,000 per point, then the estimate drops by 20% each week. To rent is the weekly total minus your owned screenings, with a minimum of zero. The bars all use the largest weekly target as their scale.</p>
+            </details>
+          </section>
         </div>
         <details class="group animated-disclosure mt-3 border-t border-line" id="breakdown" hidden>
-          <summary class="disclosure-trigger py-2 text-sm font-semibold text-brand">
-            <span class="flex items-center gap-2"><svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-list-checks"></use></svg> Campaign breakdown</span>
+          <summary class="disclosure-trigger py-2 text-sm font-semibold group-open:text-brand">
+            <span class="flex items-center gap-2"><svg class="ui-icon text-brand" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-list-checks"></use></svg> Campaign breakdown</span>
             <span class="disclosure-chevron" aria-hidden="true"></span>
           </summary>
           <div class="grid items-start gap-5 border-t border-line pt-4 min-[1100px]:grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)]">
@@ -351,17 +326,20 @@
       </section>
     </div>
 
-    <details class="group animated-disclosure mt-5 mb-6 border-b border-line" id="directory">
-      <summary class="disclosure-trigger py-3 font-bold">
-        <span class="flex items-center gap-2"><svg class="ui-icon text-muted" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-building-2"></use></svg> Agency directory</span>
+    <details class="group animated-disclosure mb-6 border-b border-line md:mt-5" id="directory">
+      <summary class="disclosure-trigger py-2 text-sm font-semibold group-open:text-brand">
+        <span id="directory-title" class="flex items-center gap-2"><svg class="ui-icon text-brand" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-building-2"></use></svg> Agency directory</span>
         <span class="disclosure-chevron" aria-hidden="true"></span>
       </summary>
       <p class="mb-3 text-sm text-muted">Check which agencies you have unlocked in your save.</p>
-      <div class="mb-4 overflow-x-auto">
-        <table class="w-full text-left text-sm [&_th]:border-b [&_th]:border-line [&_th]:px-1 [&_th]:py-2 [&_td]:border-b [&_td]:border-line [&_td]:px-1 [&_td]:py-2 sm:[&_td]:px-2 sm:[&_th]:px-2">
-          <thead class="bg-tint"><tr><th scope="col">Agency</th><th scope="col">Focus</th><th scope="col">Audience</th><th scope="col">Level</th></tr></thead>
-          <tbody id="directory-rows"></tbody>
-        </table>
+      <div class="@container mb-4">
+        <p class="mb-2 hidden text-xs text-muted @max-[34rem]:block">Scroll sideways to see all columns.</p>
+        <div class="overflow-x-auto overscroll-x-contain focus-visible:-outline-offset-2" role="region" aria-labelledby="directory-title" tabindex="0">
+          <table class="w-full min-w-[34rem] text-left text-sm [&_th]:border-b [&_th]:border-line [&_th]:px-2 [&_th]:py-2 [&_th]:whitespace-nowrap [&_td]:border-b [&_td]:border-line [&_td]:px-2 [&_td]:py-2">
+            <thead class="bg-tint"><tr><th scope="col">Agency</th><th scope="col">Focus</th><th scope="col">Audience</th><th scope="col">Level</th></tr></thead>
+            <tbody id="directory-rows"></tbody>
+          </table>
+        </div>
       </div>
     </details>
   </main>

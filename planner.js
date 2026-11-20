@@ -24,9 +24,10 @@ function planCampaign(selection, commercial, artistic) {
     return { id, name: GUIDE.audiences[id], score, high: score >= 0.67 }
   }).filter(row => row.score > 0.33).sort((a, b) => b.score - a.score)
 
+  const scoreDifference = Math.round((artistic - commercial) * 100)
   let lean = 0
-  if (artistic > commercial + 0.1) lean = 1
-  if (commercial > artistic + 0.1) lean = 2
+  if (scoreDifference > 10) lean = 1
+  if (scoreDifference < -10) lean = 2
 
   const agencies = GUIDE.agencies.map(agency => {
     const matches = audiences.filter(audience => agency.targets.includes(audience.id))
@@ -52,7 +53,11 @@ function planCampaign(selection, commercial, artistic) {
 
 // Distribution estimate adapted upstream from aalbertinib's Hollywood Animal Master.
 function estimateScreenings(commercial, owned) {
-  const weeks = [Math.max(0, commercial * 2 * 1000 - owned), Math.max(0, commercial * 1000 - owned)]
-  while (weeks.length < 8) weeks.push(weeks.at(-1) * 0.8)
-  return weeks.map((value, index) => index < 4 ? Math.ceil(value) : Math.floor(value))
+  const base = Math.round(commercial * 1000)
+  return Array.from({ length: 8 }, (_, week) => {
+    const demand = week === 0 ? base * 2 : base * 4 ** (week - 1) / 5 ** (week - 1)
+    const round = week < 4 ? Math.ceil : Math.floor
+    const target = round(demand)
+    return { target, toRent: Math.max(0, target - owned) }
+  })
 }
