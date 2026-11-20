@@ -1,0 +1,9 @@
+@font-face {
+  font-family: "Barlow Condensed";
+  src: url("./assets/barlow-condensed-bold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
+[hidden] { display: none !important; }

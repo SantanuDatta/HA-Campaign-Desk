@@ -1,0 +1,30 @@
+{
+  "$schema": "https://oxc.rs/schema/oxlintrc.json",
+  "env": {
+    "browser": true
+  },
+  "globals": {
+    "GUIDE": "readonly",
+    "tagsById": "readonly",
+    "AGENCY_TYPES": "readonly",
+    "planCampaign": "readonly",
+    "estimateScreenings": "readonly"
+  },
+  "rules": {
+    "eslint/no-undef": "error"
+  },
+  "overrides": [
+    {
+      "files": ["guide-data.js"],
+      "rules": {
+        "eslint/no-unused-vars": ["warn", { "varsIgnorePattern": "^GUIDE$" }]
+      }
+    },
+    {
+      "files": ["planner.js"],
+      "rules": {
+        "eslint/no-unused-vars": ["warn", { "varsIgnorePattern": "^(AGENCY_TYPES|planCampaign|estimateScreenings)$" }]
+      }
+    }
+  ]
+}

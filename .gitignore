@@ -1,0 +1,9 @@
+# Local operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local tooling and logs
+node_modules/
+*.log
+DESIGN.md

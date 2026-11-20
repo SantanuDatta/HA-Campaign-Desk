@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en" class="scheme-dark scroll-pt-4 bg-canvas text-ink selection:bg-brand selection:text-on-brand motion-safe:scroll-smooth">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#121310">
+  <meta name="description" content="Plan your Hollywood Animal ad campaign with agency rankings, audience matches, and release timing.">
+  <title>Campaign Desk | Hollywood Animal</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.5"></script>
+  <style type="text/tailwindcss">
+    @theme {
+      --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+      --color-canvas: #121310;
+      --color-panel: #1c1d18;
+      --color-popover: #25261f;
+      --color-field: #181914;
+      --color-ink: #f4f1e9;
+      --color-muted: #bab8a9;
+      --color-brand: #e5bc81;
+      --color-on-brand: #20190f;
+      --color-line: #37382f;
+      --color-control: #535448;
+      --color-tint: #303127;
+      --color-error: #f5a799;
+      --ease-ui: cubic-bezier(0.2, 0.65, 0.3, 1);
+      --animate-match-in: match-in 260ms var(--ease-ui) both;
+      @keyframes match-in {
+        from { opacity: .35; translate: 0 .2rem; }
+        to { opacity: 1; translate: 0 0; }
+      }
+    }
+    @layer base {
+      :focus-visible { @apply outline-2 outline-offset-2 outline-brand; }
+      input { @apply caret-brand tabular-nums; }
+      button, select, summary { @apply cursor-pointer; }
+    }
+    @utility stepper-frame {
+      @apply flex min-w-0 items-stretch rounded-md border border-control bg-field focus-within:border-brand has-[input[aria-invalid=true]]:border-error motion-safe:transition-colors motion-safe:duration-200;
+    }
+    @utility stepper-value {
+      @apply min-h-11 min-w-0 flex-1 rounded-l-md text-base [appearance:textfield] focus-visible:-outline-offset-2 aria-[invalid=true]:text-error [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none;
+    }
+    @utility outline-action {
+      @apply min-h-11 rounded-md border border-control px-2.5 text-sm font-semibold hover:bg-tint motion-safe:transition-[background-color,color,scale] motion-safe:duration-200 motion-safe:ease-ui motion-safe:active:scale-[.98];
+    }
+    @utility ghost-action {
+      @apply min-h-11 rounded-md px-2.5 text-sm font-semibold text-muted hover:bg-tint hover:text-ink motion-safe:transition-colors motion-safe:duration-200;
+    }
+    @utility disclosure-trigger {
+      @apply flex min-h-11 list-none items-center justify-between gap-2 hover:text-brand motion-safe:transition-colors motion-safe:duration-200 [&::-webkit-details-marker]:hidden;
+    }
+    @utility disclosure-chevron {
+      @apply mr-1 size-2 shrink-0 -translate-y-0.5 rotate-45 border-r border-b border-muted group-open:translate-y-0.5 group-open:rotate-[225deg] motion-safe:transition-transform motion-safe:duration-280 motion-safe:ease-ui;
+    }
+    @utility ui-icon {
+      @apply size-4 shrink-0;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    @utility agency-logo {
+      @apply shrink-0 rounded-md border border-line bg-black bg-no-repeat;
+      background-image: url("./assets/advertiser-reference.png");
+      background-size: 728.813559% 600.847458%;
+    }
+    @utility animated-disclosure {
+      @media (prefers-reduced-motion: no-preference) {
+        @supports (interpolate-size: allow-keywords) and selector(details::details-content) {
+          interpolate-size: allow-keywords;
+          &::details-content {
+            block-size: 0;
+            opacity: 0;
+            overflow: clip;
+            transition: block-size 280ms var(--ease-ui), opacity 240ms var(--ease-ui),
+              content-visibility 280ms allow-discrete;
+          }
+          &[open]::details-content {
+            block-size: auto;
+            opacity: 1;
+          }
+        }
+      }
+    }
+  </style>
+  <script defer src="./guide-data.js"></script>
+  <script defer src="./planner.js"></script>
+  <script defer src="./app.js"></script>
+</head>
+<body class="max-lg:has-[#quick-bar:not([hidden])]:pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
+  <!-- Lucide Static 1.76.0. See assets/lucide-LICENSE.txt. -->
+  <svg class="pointer-events-none absolute size-0 overflow-hidden" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="icon-zap" viewBox="0 0 24 24">
+      <path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z" />
+    </symbol>
+    <symbol id="icon-laugh" viewBox="0 0 24 24">
+      <path d="M15 10V9" />
+      <path d="M7.084 14.302a5.12 5.12 0 009.833 0 .24.24 0 00-.235-.302H7.32a.24.24 0 00-.235.302" />
+      <path d="M9 10V9" />
+      <circle cx="12" cy="12" r="10" />
+    </symbol>
+    <symbol id="icon-drama" viewBox="0 0 24 24">
+      <path d="M10 11h.01" />
+      <path d="M14 6h.01" />
+      <path d="M18 6h.01" />
+      <path d="M6.5 13.1h.01" />
+      <path d="M22 5c0 9-4 12-6 12s-6-3-6-12c0-2 2-3 6-3s6 1 6 3" />
+      <path d="M17.4 9.9c-.8.8-2 .8-2.8 0" />
+      <path d="M10.1 7.1C9 7.2 7.7 7.7 6 8.6c-3.5 2-4.7 3.9-3.7 5.6 4.5 7.8 9.5 8.4 11.2 7.4.9-.5 1.9-2.1 1.9-4.7" />
+      <path d="M9.1 16.5c.3-1.1 1.4-1.7 2.4-1.4" />
+    </symbol>
+    <symbol id="icon-heart" viewBox="0 0 24 24">
+      <path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5" />
+    </symbol>
+    <symbol id="icon-search" viewBox="0 0 24 24">
+      <path d="m21 21-4.34-4.34" />
+      <circle cx="11" cy="11" r="8" />
+    </symbol>
+    <symbol id="icon-chevron-down" viewBox="0 0 24 24">
+      <path d="m6 9 6 6 6-6" />
+    </symbol>
+    <symbol id="icon-check" viewBox="0 0 24 24">
+      <path d="m20 6-11 11-5-5" />
+    </symbol>
+    <symbol id="icon-x" viewBox="0 0 24 24">
+      <path d="M18 6 6 18M6 6l12 12" />
+    </symbol>
+    <symbol id="icon-clapperboard" viewBox="0 0 24 24">
+      <path d="m12.296 3.464 3.02 3.956" />
+      <path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3z" />
+      <path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <path d="m6.18 5.276 3.1 3.899" />
+    </symbol>
+    <symbol id="icon-megaphone" viewBox="0 0 24 24">
+      <path d="M11 6a13 13 0 0 0 8.4-2.8A1 1 0 0 1 21 4v12a1 1 0 0 1-1.6.8A13 13 0 0 0 11 14H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z" />
+      <path d="M6 14a12 12 0 0 0 2.4 7.2 2 2 0 0 0 3.2-2.4A8 8 0 0 1 10 14" />
+      <path d="M8 6v8" />
+    </symbol>
+    <symbol id="icon-ticket" viewBox="0 0 24 24">
+      <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
+      <path d="M13 5v2" />
+      <path d="M13 17v2" />
+      <path d="M13 11v2" />
+    </symbol>
+    <symbol id="icon-armchair" viewBox="0 0 24 24">
+      <path d="M19 9V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v3" />
+      <path d="M3 16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v1.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5V11a2 2 0 0 0-4 0z" />
+      <path d="M5 18v2" />
+      <path d="M19 18v2" />
+    </symbol>
+    <symbol id="icon-sliders-horizontal" viewBox="0 0 24 24">
+      <path d="M10 5H3" />
+      <path d="M12 19H3" />
+      <path d="M14 3v4" />
+      <path d="M16 17v4" />
+      <path d="M21 12h-9" />
+      <path d="M21 19h-5" />
+      <path d="M21 5h-7" />
+      <path d="M8 10v4" />
+      <path d="M8 12H3" />
+    </symbol>
+    <symbol id="icon-list-checks" viewBox="0 0 24 24">
+      <path d="M13 5h8" />
+      <path d="M13 12h8" />
+      <path d="M13 19h8" />
+      <path d="m3 17 2 2 4-4" />
+      <path d="m3 7 2 2 4-4" />
+    </symbol>
+    <symbol id="icon-building-2" viewBox="0 0 24 24">
+      <path d="M10 12h4" />
+      <path d="M10 8h4" />
+      <path d="M14 21v-3a2 2 0 0 0-4 0v3" />
+      <path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2" />
+      <path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" />
+    </symbol>
+    <symbol id="icon-users" viewBox="0 0 24 24">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <path d="M16 3.128a4 4 0 0 1 0 7.744" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <circle cx="9" cy="7" r="4" />
+    </symbol>
+    <symbol id="icon-calendar-days" viewBox="0 0 24 24">
+      <path d="M8 2v3" />
+      <path d="M16 2v3" />
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M3 9h18" />
+      <path d="M8 13h.01" />
+      <path d="M12 13h.01" />
+      <path d="M16 13h.01" />
+      <path d="M8 17h.01" />
+      <path d="M12 17h.01" />
+      <path d="M16 17h.01" />
+    </symbol>
+    <symbol id="icon-clock" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 6v6l4 2" />
+    </symbol>
+  </svg>
+  <main class="mx-auto max-w-6xl px-4 sm:px-8">
+    <header class="relative isolate mt-4 flex min-h-36 items-end overflow-hidden bg-black px-4 py-4 sm:mt-6 sm:min-h-52 sm:px-8 sm:py-7">
+      <img class="pointer-events-none absolute inset-0 -z-20 size-full object-cover object-[58%_50%] sm:object-center" src="./assets/cinema.webp" alt="" width="1440" height="480" fetchpriority="high">
+      <div aria-hidden="true" class="pointer-events-none absolute inset-0 -z-10 bg-linear-to-r from-black/90 via-black/50 to-transparent sm:via-black/10"></div>
+      <div>
+        <h1 class="font-display text-[3rem]/none font-bold tracking-tight text-ink sm:text-[4.5rem]">Campaign Desk</h1>
+        <p class="mt-2 max-w-56 text-sm text-ink/85 sm:max-w-none sm:text-base">Film advertising and release planning for Hollywood Animal.</p>
+      </div>
+    </header>
+
+    <noscript><p>Enable JavaScript to use the campaign planner.</p></noscript>
+    <div class="mt-5 grid border-y border-line md:grid-cols-[minmax(18rem,0.86fr)_minmax(0,1.6fr)]" id="planner">
+      <section class="min-w-0 pt-5 pb-6 md:border-r md:border-line md:pr-6 lg:pr-8" id="film" tabindex="-1" aria-labelledby="film-title">
+        <div class="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <h2 class="flex items-center gap-2.5 text-xl font-semibold tracking-tight" id="film-title">
+            <svg class="ui-icon size-5 text-brand" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-clapperboard"></use></svg> Film setup
+          </h2>
+          <button class="ghost-action -mr-2.5 inline-flex items-center gap-1.5" type="button" id="reset" hidden>
+            <svg class="ui-icon text-error" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-x"></use></svg>
+            Clear film
+          </button>
+        </div>
+        <p id="film-caption" class="mt-1 text-sm text-brand" hidden>Example film loaded</p>
+        <div class="mt-3 grid gap-4">
+          <div class="min-w-0">
+            <label class="block text-sm font-bold" for="tag-search">Story elements</label>
+            <p class="mt-1 text-sm text-muted" id="tag-help">Add the tags listed on your film’s script.</p>
+            <div class="relative z-40 mt-2" id="tag-picker">
+              <div class="flex items-center rounded-md border border-control bg-field pl-3 focus-within:border-brand focus-within:ring-1 focus-within:ring-brand/40">
+                <svg class="pointer-events-none size-4 shrink-0 text-muted" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-search"></use></svg>
+                <input class="min-h-11 w-full min-w-0 px-2 py-2 text-base focus-visible:outline-none placeholder:text-muted" id="tag-search" type="search" placeholder="Search story tags" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="matches" aria-describedby="tag-help">
+                <button class="group mr-0.5 grid size-11 shrink-0 place-items-center rounded text-muted hover:text-ink" id="tag-toggle" type="button" tabindex="-1" aria-label="Browse story tags" aria-expanded="false" aria-controls="tag-popup">
+                  <svg class="size-4 group-aria-expanded:rotate-180 motion-safe:transition-transform motion-safe:duration-260 motion-safe:ease-ui" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-chevron-down"></use></svg>
+                </button>
+              </div>
+              <div id="tag-popup" class="group/menu absolute inset-x-0 top-[calc(100%+0.375rem)] z-40 flex max-h-(--picker-height) origin-top flex-col overflow-hidden rounded-md border border-control bg-popover shadow-lg data-[placement=above]:top-auto data-[placement=above]:bottom-[calc(100%+0.375rem)] data-[placement=above]:origin-bottom motion-safe:transition-[opacity,scale,display] motion-safe:transition-discrete motion-safe:duration-260 motion-safe:ease-ui motion-safe:starting:scale-[.98] motion-safe:starting:opacity-0 motion-safe:[&[hidden]]:scale-[.98] motion-safe:[&[hidden]]:opacity-0 motion-safe:[&[hidden]]:duration-200" hidden inert>
+                <div class="flex min-h-10 shrink-0 flex-wrap items-center justify-between gap-x-2 border-b border-line px-3 py-1.5 group-data-categories/menu:min-h-9" id="tag-menu-header">
+                  <button class="-ml-1 inline-flex min-h-9 items-center gap-1.5 rounded px-1 text-xs font-semibold text-brand hover:underline" id="tag-back" type="button" hidden>
+                    <svg class="size-3.5 rotate-90" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-chevron-down"></use></svg>
+                    All categories
+                  </button>
+                  <span class="text-xs font-semibold text-muted" id="tag-menu-title">Browse by category</span>
+                </div>
+                <div class="min-h-0 overflow-y-auto overscroll-contain p-1 group-data-categories/menu:p-0.5" id="tag-options">
+                  <div id="matches" role="listbox" aria-label="Matching story elements"></div>
+                  <p id="tag-empty" class="p-3 text-sm text-muted" role="status" hidden></p>
+                </div>
+              </div>
+            </div>
+            <div class="mt-2 grid grid-cols-2 gap-1.5" id="quick-genres" role="group" aria-label="Quick-add genres"></div>
+          </div>
+          <div class="min-w-0" role="group" aria-labelledby="score-title">
+            <h3 class="flex items-center gap-1.5 text-sm font-bold" id="score-title">
+              <svg class="ui-icon size-3.5 text-muted" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-sliders-horizontal"></use></svg> Film scores <span class="font-normal text-muted">(out of 10)</span>
+            </h3>
+            <div class="mt-2 grid grid-cols-2 gap-2">
+              <div class="grid min-w-0 gap-1">
+                <label class="text-sm font-medium text-muted" for="commercial">Commercial</label>
+                <input class="px-3 font-semibold text-ink" id="commercial" type="number" min="0" max="10" step="0.1" value="5.0" inputmode="decimal" aria-describedby="score-error">
+              </div>
+              <div class="grid min-w-0 gap-1">
+                <label class="text-sm font-medium text-muted" for="artistic">Artistic</label>
+                <input class="px-3 font-semibold text-ink" id="artistic" type="number" min="0" max="10" step="0.1" value="5.0" inputmode="decimal" aria-describedby="score-error">
+              </div>
+            </div>
+            <p class="mt-2 text-sm text-error" id="score-error" hidden></p>
+          </div>
+        </div>
+        <div class="mt-5 grid gap-2 border-t border-line pt-4" id="selected-tags" hidden>
+          <h3 class="text-sm font-bold">Selected tags <span class="ml-1 font-normal text-muted" id="selected-count"></span></h3>
+          <ul class="flex min-w-0 flex-wrap gap-1.5" id="selection" aria-label="Selected story elements"></ul>
+        </div>
+        <fieldset class="mt-3" id="genre-mix" aria-describedby="genre-hint" hidden>
+          <legend class="text-sm font-bold">Genre mix</legend>
+          <p class="mt-1 text-sm text-muted" id="genre-hint">Set weights from 0 to 100. The arrows change a weight by 5. Equal weights split the mix evenly.</p>
+          <div class="mt-2 grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-2" id="genre-weights"></div>
+        </fieldset>
+      </section>
+
+      <section class="min-w-0 border-t border-line pt-5 pb-6 md:border-t-0 md:pl-6 lg:pl-8" id="recommendations" tabindex="-1" aria-labelledby="agency-title">
+        <div class="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <h2 class="flex items-center gap-2.5 text-xl font-semibold tracking-tight" id="agency-title">
+            <svg class="ui-icon size-5 text-brand" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-megaphone"></use></svg> Advertiser picks
+          </h2>
+          <span class="text-sm font-medium text-muted" id="lean" hidden></span>
+        </div>
+        <div class="mt-3 grid gap-5" id="rankings">
+          <div class="min-w-0 rounded-md border border-line bg-panel px-4 py-4 sm:px-5" id="top-recommendation">
+            <h3 class="flex items-center gap-1.5 text-sm font-semibold text-brand" id="top-label" hidden>
+              <svg class="ui-icon size-3.5" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-check"></use></svg> Top match
+            </h3>
+            <p class="font-semibold" id="result-message">Add a story tag to get started.</p>
+            <p class="mt-1 max-w-[54ch] text-sm leading-6 text-muted" id="empty-guidance">Pick a genre or search for a story element. Use the scores from your film to refine the results.</p>
+            <button class="outline-action mt-3 text-brand" type="button" id="example">Try an example</button>
+            <ol id="top-pick" aria-label="Top advertiser"></ol>
+            <dl class="mt-3 grid gap-x-4 gap-y-2 border-t border-line pt-3 min-[480px]:grid-cols-3" id="brief" aria-label="Campaign at a glance" hidden></dl>
+          </div>
+          <section class="min-w-0 rounded-md border border-line bg-panel px-4 py-4 sm:px-5" id="distribution" tabindex="-1" aria-labelledby="distribution-title">
+            <div class="flex flex-wrap items-start justify-between gap-x-5 gap-y-3">
+              <div class="min-w-0 flex-1 basis-48">
+                <h3 class="flex items-center gap-2 text-base font-semibold" id="distribution-title">
+                  <svg class="ui-icon size-4.5 text-brand" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-ticket"></use></svg> Distribution calculator
+                </h3>
+                <p class="mt-1 text-sm text-muted">Extra screenings to book based on your commercial score and owned capacity.</p>
+              </div>
+              <div class="ml-auto grid justify-items-end gap-1.5">
+                <label class="flex items-center gap-1.5 text-right text-sm font-medium text-muted" for="owned">
+                  <svg class="ui-icon size-3.5" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-armchair"></use></svg> Owned screenings
+                </label>
+                <input class="px-3 font-semibold" type="number" id="owned" min="0" step="1" value="3185" inputmode="numeric" aria-describedby="distribution-error">
+              </div>
+            </div>
+            <p class="mt-2 text-sm text-error" id="distribution-error" hidden>Enter a valid commercial score and a nonnegative whole number of owned screenings.</p>
+            <dl id="weeks" class="mt-4 grid grid-cols-4 gap-1.5 sm:gap-2 min-[1100px]:grid-cols-8" aria-label="Extra screenings by week"></dl>
+          </section>
+          <div class="min-w-0" id="alternatives" hidden>
+            <h3 class="border-b border-line pb-2 text-sm font-semibold text-muted">Other matches</h3>
+            <ol id="other-picks" start="2" aria-label="Other ranked advertisers"></ol>
+            <button class="ghost-action mt-1 -ml-2.5" type="button" id="more" aria-controls="other-picks" aria-expanded="false" hidden></button>
+          </div>
+        </div>
+        <details class="group animated-disclosure mt-3 border-t border-line" id="breakdown" hidden>
+          <summary class="disclosure-trigger py-2 text-sm font-semibold text-brand">
+            <span class="flex items-center gap-2"><svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-list-checks"></use></svg> Campaign breakdown</span>
+            <span class="disclosure-chevron" aria-hidden="true"></span>
+          </summary>
+          <div class="grid items-start gap-5 border-t border-line pt-4 min-[1100px]:grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)]">
+            <section aria-labelledby="audience-title">
+              <h3 class="flex items-center gap-2 font-bold" id="audience-title">
+                <svg class="ui-icon text-muted" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-users"></use></svg> Target audience
+              </h3>
+              <p class="mt-2 text-sm text-muted" id="audience-empty">No high or moderate matches.</p>
+              <ul id="audiences" class="mt-3 grid gap-2" aria-label="Audience interest groups"></ul>
+            </section>
+            <section aria-labelledby="holiday-title">
+              <h3 class="flex items-center gap-2 font-bold" id="holiday-title">
+                <svg class="ui-icon text-muted" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-calendar-days"></use></svg> Release holidays
+              </h3>
+              <p class="mt-2 text-sm text-muted" id="holiday-empty">No holiday matches.</p>
+              <ol class="mt-3 grid gap-2" id="holidays"></ol>
+            </section>
+            <section class="border-t border-line pt-4 min-[1100px]:col-span-2" aria-labelledby="campaign-title">
+              <h3 class="flex items-center gap-2 font-bold" id="campaign-title">
+                <svg class="ui-icon text-muted" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-clock"></use></svg> Campaign duration
+              </h3>
+              <div class="mt-3 flex h-2 gap-1 overflow-hidden rounded-full bg-field" id="campaign-timeline" aria-hidden="true"></div>
+              <dl class="mt-3 grid grid-cols-3 gap-x-2" id="duration"></dl>
+            </section>
+          </div>
+        </details>
+      </section>
+    </div>
+
+    <details class="group animated-disclosure mt-5 mb-6 border-b border-line" id="directory">
+      <summary class="disclosure-trigger py-3 font-bold">
+        <span class="flex items-center gap-2"><svg class="ui-icon text-muted" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-building-2"></use></svg> Agency directory</span>
+        <span class="disclosure-chevron" aria-hidden="true"></span>
+      </summary>
+      <p class="mb-3 text-sm text-muted">Check which agencies you have unlocked in your save.</p>
+      <div class="mb-4 overflow-x-auto">
+        <table class="w-full text-left text-sm [&_th]:border-b [&_th]:border-line [&_th]:px-1 [&_th]:py-2 [&_td]:border-b [&_td]:border-line [&_td]:px-1 [&_td]:py-2 sm:[&_td]:px-2 sm:[&_th]:px-2">
+          <thead class="bg-tint"><tr><th scope="col">Agency</th><th scope="col">Focus</th><th scope="col">Audience</th><th scope="col">Level</th></tr></thead>
+          <tbody id="directory-rows"></tbody>
+        </table>
+      </div>
+    </details>
+  </main>
+  <div class="fixed inset-x-0 bottom-0 z-30 flex justify-center gap-2 border-t border-line bg-field px-4 pt-2 pb-[calc(0.55rem+env(safe-area-inset-bottom))] lg:hidden" id="quick-bar" aria-label="Film planner shortcuts" role="group">
+    <a class="outline-action flex min-h-12 max-w-60 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-center text-xs hover:underline" href="#film">
+      <svg class="ui-icon text-brand" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-clapperboard"></use></svg> <span>Edit film</span>
+    </a>
+    <a class="outline-action flex min-h-12 max-w-60 flex-1 flex-col items-center justify-center gap-0.5 border-brand bg-brand px-1 text-center text-xs text-on-brand hover:bg-brand/90 hover:underline" href="#recommendations" id="quick-picks" hidden>
+      <svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-megaphone"></use></svg> <span id="quick-picks-label">See picks</span>
+    </a>
+    <a class="outline-action flex min-h-12 max-w-60 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-center text-xs hover:underline" href="#distribution">
+      <svg class="ui-icon text-brand" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-ticket"></use></svg> <span>Screenings</span>
+    </a>
+  </div>
+  <div class="sr-only" role="status" id="status"></div>
+</body>
+</html>
