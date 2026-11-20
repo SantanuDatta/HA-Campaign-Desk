@@ -47,6 +47,9 @@
     @utility ghost-action {
       @apply min-h-11 rounded-md px-2.5 text-sm font-semibold text-muted hover:bg-tint hover:text-ink motion-safe:transition-colors motion-safe:duration-200;
     }
+    @utility picker-popover {
+      @apply absolute inset-x-0 top-[calc(100%+0.375rem)] z-40 flex max-h-(--picker-height) origin-top flex-col overflow-hidden rounded-md border border-control bg-popover shadow-lg data-[placement=above]:top-auto data-[placement=above]:bottom-[calc(100%+0.375rem)] data-[placement=above]:origin-bottom motion-safe:transition-[opacity,scale,display] motion-safe:transition-discrete motion-safe:duration-260 motion-safe:ease-ui motion-safe:starting:scale-[.98] motion-safe:starting:opacity-0 motion-safe:[&[hidden]]:scale-[.98] motion-safe:[&[hidden]]:opacity-0 motion-safe:[&[hidden]]:duration-200;
+    }
     @utility disclosure-trigger {
       @apply flex min-h-11 list-none items-center justify-between gap-2 hover:text-brand motion-safe:transition-colors motion-safe:duration-200 [&::-webkit-details-marker]:hidden;
     }
@@ -92,6 +95,24 @@
 <body class="max-lg:has-[#quick-bar:not([hidden])]:pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
   <!-- Lucide Static 1.76.0. See assets/lucide-LICENSE.txt. -->
   <svg class="pointer-events-none absolute size-0 overflow-hidden" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="icon-film" viewBox="0 0 24 24">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M7 3v18m10-18v18M3 7.5h4m-4 9h4M3 12h18m-4-4.5h4m-4 9h4" />
+    </symbol>
+    <symbol id="icon-plus" viewBox="0 0 24 24">
+      <path d="M12 5v14M5 12h14" />
+    </symbol>
+    <symbol id="icon-trash" viewBox="0 0 24 24">
+      <path d="M3 6h18M19 6l-1 14H6L5 6m5 4v6m4-6v6M9 6V3h6v3" />
+    </symbol>
+    <symbol id="icon-pencil" viewBox="0 0 24 24">
+      <path d="M17 3a2.8 2.8 0 0 1 4 4L8 20l-5 1 1-5Z" />
+      <path d="m15 5 4 4" />
+    </symbol>
+    <symbol id="icon-info" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 16v-4m0-4h.01" />
+    </symbol>
     <symbol id="icon-search" viewBox="0 0 24 24">
       <path d="m21 21-4.34-4.34" />
       <circle cx="11" cy="11" r="8" />
@@ -192,6 +213,42 @@
             Clear film
           </button>
         </div>
+        <div class="mt-3 rounded-md border border-line bg-panel p-2.5">
+          <span class="mb-1.5 block text-xs font-semibold text-muted" id="saved-film-label">Saved films</span>
+          <div class="flex gap-2">
+            <div class="relative z-50 min-w-0 flex-1">
+              <button class="group flex min-h-11 w-full min-w-0 items-center gap-2 rounded-md border border-control bg-field px-2.5 text-left text-base font-semibold text-ink aria-expanded:border-brand" id="saved-film" type="button" role="combobox" aria-labelledby="saved-film-label saved-film-name" aria-expanded="false" aria-controls="film-options">
+                <svg class="ui-icon text-muted max-[360px]:hidden" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-film"></use></svg>
+                <span class="min-w-0 flex-1 truncate" id="saved-film-name"></span>
+                <svg class="ui-icon text-muted group-aria-expanded:rotate-180 motion-safe:transition-transform motion-safe:duration-260" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-chevron-down"></use></svg>
+              </button>
+              <div class="picker-popover" id="film-popup" hidden inert>
+                <div class="min-h-0 overflow-y-auto overscroll-contain p-1" id="film-options" role="listbox" aria-labelledby="saved-film-label"></div>
+              </div>
+            </div>
+            <button class="outline-action grid size-11 shrink-0 place-items-center px-0 text-muted hover:text-ink" type="button" id="rename-film" aria-controls="rename-film-form" aria-label="Rename" title="Rename film">
+              <svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-pencil"></use></svg>
+            </button>
+            <button class="outline-action grid size-11 shrink-0 place-items-center px-0 text-muted hover:text-error" type="button" id="delete-film" aria-label="Delete film" title="Delete film" aria-haspopup="dialog">
+              <svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-trash"></use></svg>
+            </button>
+            <button class="outline-action grid size-11 shrink-0 place-items-center border-brand/40 bg-brand/10 px-0 text-brand hover:bg-brand/20" type="button" id="new-film" aria-label="New film" title="New film">
+              <svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-plus"></use></svg>
+            </button>
+          </div>
+          <form class="mt-3 grid gap-2 border-t border-line pt-3 pb-1" id="rename-film-form" hidden>
+            <label class="text-sm font-medium" for="film-name">Film name</label>
+            <div class="flex gap-2">
+              <input class="min-h-11 min-w-0 flex-1 rounded-md border border-control bg-field px-2.5 text-base" type="text" id="film-name" maxlength="70" required>
+              <button class="outline-action grid size-11 shrink-0 place-items-center border-brand/40 bg-brand/10 px-0 text-brand hover:bg-brand/20" type="submit" aria-label="Save name" title="Save name">
+                <svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-check"></use></svg>
+              </button>
+              <button class="outline-action grid size-11 shrink-0 place-items-center px-0 text-muted hover:text-ink" type="button" id="cancel-rename-film" aria-label="Cancel" title="Cancel rename">
+                <svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-x"></use></svg>
+              </button>
+            </div>
+          </form>
+        </div>
         <p id="film-caption" class="mt-1 text-sm text-brand" hidden>Example film loaded</p>
         <div class="mt-3 grid gap-4">
           <div class="min-w-0">
@@ -205,7 +262,7 @@
                   <svg class="size-4 group-aria-expanded:rotate-180 motion-safe:transition-transform motion-safe:duration-260 motion-safe:ease-ui" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-chevron-down"></use></svg>
                 </button>
               </div>
-              <div id="tag-popup" class="group/menu absolute inset-x-0 top-[calc(100%+0.375rem)] z-40 flex max-h-(--picker-height) origin-top flex-col overflow-hidden rounded-md border border-control bg-popover shadow-lg data-[placement=above]:top-auto data-[placement=above]:bottom-[calc(100%+0.375rem)] data-[placement=above]:origin-bottom motion-safe:transition-[opacity,scale,display] motion-safe:transition-discrete motion-safe:duration-260 motion-safe:ease-ui motion-safe:starting:scale-[.98] motion-safe:starting:opacity-0 motion-safe:[&[hidden]]:scale-[.98] motion-safe:[&[hidden]]:opacity-0 motion-safe:[&[hidden]]:duration-200" hidden inert>
+              <div id="tag-popup" class="group/menu picker-popover" hidden inert>
                 <div class="flex min-h-10 shrink-0 flex-wrap items-center justify-between gap-x-2 border-b border-line px-3 py-1.5 group-data-categories/menu:min-h-9" id="tag-menu-header">
                   <button class="-ml-1 inline-flex min-h-9 items-center gap-1.5 rounded px-1 text-xs font-semibold text-brand hover:underline" id="tag-back" type="button" hidden>
                     <svg class="size-3.5 rotate-90" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-chevron-down"></use></svg>
@@ -222,7 +279,7 @@
           </div>
           <div class="min-w-0" role="group" aria-labelledby="score-title">
             <h3 class="flex items-center gap-1.5 text-sm font-bold" id="score-title">
-              <svg class="ui-icon size-3.5 text-muted" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-sliders-horizontal"></use></svg> Film scores <span class="font-normal text-muted">(out of 10)</span>
+              <svg class="ui-icon size-3.5 text-muted" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-sliders-horizontal"></use></svg> Film scores
             </h3>
             <p class="mt-1 text-sm text-muted">Enter the scores from your film in the game.</p>
             <div class="mt-2 grid grid-cols-2 gap-2">
@@ -244,8 +301,12 @@
         </div>
         <fieldset class="mt-3" id="genre-mix" aria-describedby="genre-hint" hidden>
           <legend class="text-sm font-bold">Genre mix (%)</legend>
-          <p class="mt-1 text-sm text-muted" id="genre-hint">Genres share 100% automatically. Edit a percentage and the others adjust. The arrows change it by 5 points.</p>
+          <p class="mt-1 text-sm text-muted" id="genre-hint">Genres start evenly split. Enter your game percentages directly and make sure they add up to 100%.</p>
           <div class="mt-2 grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-2" id="genre-weights"></div>
+          <div class="mt-1 flex flex-wrap items-center justify-between gap-x-2">
+            <p class="text-sm font-medium text-muted tabular-nums data-[valid=false]:text-error" id="genre-total" role="status"></p>
+            <button class="ghost-action" type="button" id="split-genres-evenly">Split evenly</button>
+          </div>
         </fieldset>
       </section>
 
@@ -278,9 +339,9 @@
                 <h3 class="flex items-center gap-2 text-base font-semibold" id="distribution-title">
                   <svg class="ui-icon size-4.5 text-brand" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-ticket"></use></svg> Distribution calculator
                 </h3>
-                <p class="mt-1 text-sm text-muted" id="distribution-score" hidden></p>
+                <p class="mt-1 text-sm text-muted" id="distribution-campaign"></p>
               </div>
-              <div class="grid gap-1.5">
+              <div class="ml-auto grid justify-items-end gap-1.5">
                 <label class="text-sm font-medium text-ink" for="owned">Owned screenings</label>
                 <input class="px-3 font-semibold" type="number" id="owned" min="0" step="1" value="3185" inputmode="numeric" aria-describedby="owned-help distribution-error">
               </div>
@@ -290,7 +351,10 @@
             <dl class="mt-4 grid grid-cols-2 gap-2 @min-[30rem]:grid-cols-4" id="weeks" aria-label="Weekly screenings and rentals" hidden></dl>
             <details class="group mt-2 border-t border-line">
               <summary class="disclosure-trigger text-sm font-medium text-muted">How the estimate works <span class="disclosure-chevron" aria-hidden="true"></span></summary>
-              <p class="pb-2 text-sm text-muted">Week 1 starts at 2,000 screenings per commercial score point. Week 2 starts at 1,000 per point, then the estimate drops by 20% each week. To rent is the weekly total minus your owned screenings, with a minimum of zero. The bars all use the largest weekly target as their scale.</p>
+              <div class="grid gap-2 pb-2 text-sm text-muted">
+                <p>The forecast uses your film scores, story elements, and the top advertiser’s in-game targets and ad strength. It follows the recommended campaign, including the drop in ad reach after it ends. The estimate assumes standard difficulty and a regular release date. Holidays, studio perks, and competing films can change demand.</p>
+                <p>Rentals cover the screenings your owned capacity cannot cover. Bars use the largest weekly target as their scale.</p>
+              </div>
             </details>
           </section>
         </div>
@@ -326,7 +390,7 @@
       </section>
     </div>
 
-    <details class="group animated-disclosure mb-6 border-b border-line md:mt-5" id="directory">
+    <details class="group animated-disclosure border-b border-line md:mt-5" id="directory">
       <summary class="disclosure-trigger py-2 text-sm font-semibold group-open:text-brand">
         <span id="directory-title" class="flex items-center gap-2"><svg class="ui-icon text-brand" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-building-2"></use></svg> Agency directory</span>
         <span class="disclosure-chevron" aria-hidden="true"></span>
@@ -342,7 +406,31 @@
         </div>
       </div>
     </details>
+    <details class="group animated-disclosure mb-6 border-b border-line" id="sources">
+      <summary class="disclosure-trigger py-2 text-sm font-semibold group-open:text-brand">
+        <span class="flex items-center gap-2"><svg class="ui-icon text-brand" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-info"></use></svg> Sources and assumptions</span>
+        <span class="disclosure-chevron" aria-hidden="true"></span>
+      </summary>
+      <div class="grid gap-4 pb-4 text-sm text-muted md:grid-cols-2">
+        <section aria-labelledby="source-game">
+          <h3 class="font-semibold text-ink" id="source-game">Game data</h3>
+          <p class="mt-1">The forecast draws on the release and advertising mechanics in <a class="text-brand underline underline-offset-2" href="https://store.steampowered.com/app/2680550/Hollywood_Animal/">Hollywood Animal</a></p>
+        </section>
+        <section aria-labelledby="source-forecast">
+          <h3 class="font-semibold text-ink" id="source-forecast">Forecast assumptions</h3>
+          <p class="mt-1">The forecast assumes you run the top recommended advertiser on the suggested schedule. It uses standard difficulty, a regular release date, and the average of your two scores as a stand-in for the game’s baseline score. Holidays, studio perks, and competing releases can change attendance.</p>
+        </section>
+      </div>
+    </details>
   </main>
+  <dialog class="m-auto w-[calc(100%_-_2rem)] max-w-sm rounded-md border border-control bg-panel p-5 text-ink shadow-lg backdrop:bg-black/65" id="delete-film-dialog" aria-labelledby="delete-film-title" aria-describedby="delete-film-description">
+    <h2 class="text-lg font-semibold" id="delete-film-title">Delete film?</h2>
+    <p class="mt-2 wrap-anywhere text-sm text-muted" id="delete-film-description">Delete <strong class="text-ink" id="delete-film-name"></strong> and its saved campaign?</p>
+    <form class="mt-4 flex flex-wrap justify-end gap-2" method="dialog">
+      <button class="outline-action text-ink" type="submit" value="cancel" autofocus>Cancel</button>
+      <button class="outline-action border-error/40 bg-error/10 text-error hover:bg-error/20" type="submit" value="delete">Delete film</button>
+    </form>
+  </dialog>
   <div class="fixed inset-x-0 bottom-0 z-30 flex justify-center gap-2 border-t border-line bg-field px-4 pt-2 pb-[calc(0.55rem+env(safe-area-inset-bottom))] lg:hidden" id="quick-bar" aria-label="Film planner shortcuts" role="group">
     <a class="outline-action flex min-h-12 max-w-60 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-center text-xs hover:underline" href="#film">
       <svg class="ui-icon text-brand" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-clapperboard"></use></svg> <span>Edit film</span>

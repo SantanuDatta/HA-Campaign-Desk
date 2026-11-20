@@ -12,14 +12,14 @@ const GUIDE = {
   ],
   audiences: {"YM":"Young Men","YF":"Young Women","TM":"Boys","TF":"Girls","AM":"Men","AF":"Women"},
   agencies: [
-    {"name":"NBG","targets":["AM","AF"],"type":0,"level":3},
-    {"name":"Ross&Ross Bros.","targets":["AM","AF"],"type":0,"level":2},
-    {"name":"Vien Pascal","targets":["TM","TF","AM","AF"],"type":1,"level":2},
-    {"name":"Spark","targets":["YM","YF","AM","AF"],"type":2,"level":3},
-    {"name":"Nate Sparrow Press","targets":["YM","YF","AM","AF"],"type":0,"level":3},
-    {"name":"Velvet Gloss","targets":["TF","YF","AF"],"type":2,"level":3},
-    {"name":"Pierre Zola Company","targets":["TM","YM","AM"],"type":0,"level":2},
-    {"name":"Spice Mice","targets":["TM","TF","YM","YF"],"type":2,"level":2}
+    {"name":"NBG","type":0,"level":3,"adAudiences":{"AM":[0],"AF":[0]}},
+    {"name":"Ross&Ross Bros.","type":0,"level":2,"adAudiences":{"AM":[0],"AF":[0]}},
+    {"name":"Vien Pascal","type":1,"level":2,"adAudiences":{"YM":[1],"YF":[1],"AM":[1],"AF":[1]}},
+    {"name":"Spark","type":2,"level":3,"adAudiences":{"YM":[2],"YF":[2],"AM":[2],"AF":[2]}},
+    {"name":"Nate Sparrow Press","type":0,"level":3,"adAudiences":{"YM":[0],"YF":[0],"AM":[0],"AF":[0]}},
+    {"name":"Velvet Gloss","type":2,"level":3,"adAudiences":{"TF":[2],"YF":[2],"AF":[2]}},
+    {"name":"Pierre Zola Company","type":0,"level":2,"adAudiences":{"TM":[2,1],"YM":[2,1],"AM":[2,1]}},
+    {"name":"Spice Mice","type":2,"level":2,"adAudiences":{"TM":[2],"TF":[2],"YM":[2],"YF":[2]}}
   ],
   holidays: [
     {"name":"Valentine's Day","bonuses":{"TM":7,"TF":15,"YM":12,"YF":30,"AM":15,"AF":0}},

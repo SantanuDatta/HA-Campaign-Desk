@@ -15,6 +15,10 @@ const quickBar = byId('quick-bar')
 const commercial = byId('commercial')
 const artistic = byId('artistic')
 const owned = byId('owned')
+const filmPicker = byId('saved-film')
+const filmPopup = byId('film-popup')
+const filmOptions = byId('film-options')
+const deleteFilmDialog = byId('delete-film-dialog')
 const sortedTags = [...GUIDE.tags].sort((a, b) => a.name.localeCompare(b.name)).map(tag => ({
   ...tag, searchText: (tag.name + ' ' + tag.id.replaceAll('_', ' ') + ' ' + tag.category).toLowerCase()
 }))
@@ -25,6 +29,10 @@ const exampleIds = [
 ]
 const selection = new Map()
 const storageKey = 'hollywood-animal-advertisers-v1'
+const filmStoragePrefix = storageKey + ':film:'
+const activeFilmKey = storageKey + ':active-film'
+const films = new Map()
+let activeFilmId
 // Top-left positions of the 118 px logo views in the supplied 860 × 709 screenshot.
 const agencyLogoPositions = {
   NBG: [29, 90],
@@ -37,6 +45,7 @@ const agencyLogoPositions = {
   'Spice Mice': [437, 495]
 }
 let showingExample = false
+let manualGenreMix = false
 let showAll = false
 let browseCategory = ''
 
@@ -70,70 +79,206 @@ function agencyMark(name, frameSize = 'size-10') {
   return mark
 }
 
-function save() {
+function saveFilmChanges(stateChanges, name) {
+  const film = films.get(activeFilmId)
+  const local = { ...film, state: { ...film.state, ...stateChanges } }
+  let updated = { ...local, name: name ?? film.name }
   try {
-    localStorage.setItem(storageKey, JSON.stringify({
-      selection: [...selection], commercial: commercial.value, artistic: artistic.value,
-      owned: owned.value, showingExample
-    }))
+    const key = filmStoragePrefix + film.id
+    const stored = readSavedFilm(localStorage.getItem(key), film.id)
+    if (stored) {
+      updated = { ...stored, name: name ?? stored.name, state: { ...stored.state, ...stateChanges } }
+      localStorage.setItem(key, JSON.stringify(updated))
+    }
   } catch {
-    // The planner remains usable in browsers that disable storage.
+    // Keep this tab usable if a browser disables or limits storage.
   }
+  applyFilmUpdate(updated, local)
+}
+
+function createFilm(id, name, state = {}) {
+  const film = { id, name, state: { selection: [], ...state }, createdAt: Date.now() }
+  films.set(id, film)
+  try {
+    localStorage.setItem(filmStoragePrefix + id, JSON.stringify(film))
+  } catch {
+    // The film remains available in this tab.
+  }
+  return film
+}
+
+function selectionChanges() {
+  return { selection: [...selection], manualGenreMix, showingExample }
+}
+
+function applyFilmUpdate(film, previous = films.get(film.id)) {
+  const nameChanged = film.name !== previous?.name
+  films.set(film.id, film)
+  if (film.id !== activeFilmId) {
+    if (nameChanged) renderFilmSwitcher()
+    return
+  }
+
+  const state = film.state
+  const oldState = previous.state
+  if (state.manualGenreMix !== oldState.manualGenreMix ||
+      JSON.stringify(state.selection) !== JSON.stringify(oldState.selection)) {
+    loadFilmSelection(state)
+    renderSelection()
+    for (const option of matches.querySelectorAll('[data-tag]')) {
+      option.setAttribute('aria-selected', String(selection.has(option.dataset.tag)))
+    }
+  }
+  for (const input of [commercial, artistic, owned]) {
+    if (state[input.id] !== oldState[input.id]) input.value = state[input.id] ?? input.defaultValue
+  }
+  showingExample = state.showingExample === true
+  if (nameChanged) renderFilmSwitcher()
+  syncPrimarySteppers.forEach(sync => sync())
+  refreshResults()
+}
+
+function readSavedFilm(value, id) {
+  try {
+    const film = JSON.parse(value)
+    if (film?.id === id && typeof film.name === 'string' && film.name.trim() &&
+        Array.isArray(film.state?.selection) && Number.isFinite(film.createdAt)) return film
+  } catch {
+    // Skip unreadable entries so other saved films remain available.
+  }
+  return null
+}
+
+function loadFilms() {
+  let activeId
+  try {
+    for (let index = 0; index < localStorage.length; index++) {
+      const key = localStorage.key(index)
+      if (!key?.startsWith(filmStoragePrefix)) continue
+      const film = readSavedFilm(localStorage.getItem(key), key.slice(filmStoragePrefix.length))
+      if (film) films.set(film.id, film)
+    }
+    activeId = localStorage.getItem(activeFilmKey)
+    if (!films.size) {
+      const previous = JSON.parse(localStorage.getItem(storageKey))
+      createFilm('first', 'Film 1', Array.isArray(previous?.selection) ? previous : {})
+    }
+  } catch {
+    // Fall back to a blank film if storage is unavailable.
+  }
+  return films.get(activeId) ?? films.values().next().value ?? createFilm('first', 'Film 1')
+}
+
+function renderFilmSwitcher() {
+  const ordered = [...films.values()].sort((a, b) => a.createdAt - b.createdAt)
+  byId('saved-film-name').textContent = films.get(activeFilmId).name
+  filmOptions.replaceChildren(...ordered.map(film => {
+    const option = pickerOption('film-option-' + film.id)
+    option.dataset.film = film.id
+    option.setAttribute('aria-selected', String(film.id === activeFilmId))
+    option.append(
+      element('span', 'min-w-0 flex-1 wrap-anywhere', film.name),
+      lucideIcon('check', 'invisible size-3.5 shrink-0 text-brand group-aria-selected/option:visible')
+    )
+    return option
+  }))
+  if (!filmPopup.hidden) {
+    positionPicker()
+    focusPickerOption(filmOptions.querySelector('[aria-selected="true"]'), filmPicker, filmOptions)
+  }
+}
+
+function activateFilm(film) {
+  closeFilmPicker()
+  activeFilmId = film.id
+  try {
+    localStorage.setItem(activeFilmKey, film.id)
+  } catch {
+    // Keep this tab usable without storage.
+  }
+  loadFilmState(film.state)
+  byId('rename-film-form').hidden = true
+  renderFilmSwitcher()
+  syncPrimarySteppers.forEach(sync => sync())
+  refreshSelection()
+}
+
+function openFilmNameEditor() {
+  const form = byId('rename-film-form')
+  const input = byId('film-name')
+  input.value = films.get(activeFilmId).name
+  form.hidden = false
+  input.focus()
+  input.select()
 }
 
 function selectedGenres() {
   return [...selection.keys()].filter(id => tagsById.get(id).category === 'Genre')
 }
 
-function distributeGenrePercentages(ids, total = 100, { evenly = false, weights = selection } = {}) {
+function genreTotal(ids) {
+  return Math.round(ids.reduce((sum, id) => sum + selection.get(id), 0) * 100) / 100
+}
+
+function distributeGenrePercentages(ids, evenly = false) {
   if (!ids.length) return
-  const previousTotal = ids.reduce((sum, id) => sum + weights.get(id), 0)
+  const previousTotal = genreTotal(ids)
   const shares = ids.map(id => {
     const exact = evenly || !previousTotal
-      ? total / ids.length
-      : total * weights.get(id) / previousTotal
+      ? 100 / ids.length
+      : 100 * selection.get(id) / previousTotal
     const percentage = Math.floor(exact)
     return { id, percentage, remainder: exact - percentage }
   })
-  const remaining = total - shares.reduce((sum, share) => sum + share.percentage, 0)
+  const remaining = 100 - shares.reduce((sum, share) => sum + share.percentage, 0)
   shares.sort((a, b) => b.remainder - a.remainder)
   shares.forEach(({ id, percentage }, index) => {
     selection.set(id, percentage + Number(index < remaining))
   })
 }
 
-function restore() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(storageKey))
-    if (!Array.isArray(saved?.selection)) return false
-    for (const entry of saved.selection) {
-      if (!Array.isArray(entry)) continue
-      const [id, share] = entry
-      if (tagsById.has(id) && Number.isInteger(share) && share >= 0 && share <= 100) {
-        selection.set(id, share)
-      }
+function loadFilmSelection(saved) {
+  selection.clear()
+  for (const entry of saved.selection ?? []) {
+    if (!Array.isArray(entry)) continue
+    const [id, share] = entry
+    if (tagsById.has(id) && Number.isFinite(share) && share >= 0 && share <= 100) {
+      selection.set(id, share)
     }
-    distributeGenrePercentages(selectedGenres())
-    commercial.value = saved.commercial ?? '5.0'
-    artistic.value = saved.artistic ?? '5.0'
-    owned.value = saved.owned ?? owned.defaultValue
-    showingExample = saved.showingExample === true
-    return true
-  } catch {
-    return false
   }
+  const genres = selectedGenres()
+  if (typeof saved.manualGenreMix === 'boolean') {
+    manualGenreMix = saved.manualGenreMix && genres.length > 1
+    if (!manualGenreMix) distributeGenrePercentages(genres, true)
+  } else {
+    if (genreTotal(genres) !== 100) distributeGenrePercentages(genres)
+    const shares = genres.map(id => selection.get(id))
+    manualGenreMix = genres.length > 1 && Math.max(...shares) - Math.min(...shares) > 1
+  }
+}
+
+function loadFilmState(saved) {
+  loadFilmSelection(saved)
+  commercial.value = saved.commercial ?? commercial.defaultValue
+  artistic.value = saved.artistic ?? artistic.defaultValue
+  owned.value = saved.owned ?? owned.defaultValue
+  showingExample = saved.showingExample === true
+  showAll = false
+  search.value = ''
 }
 
 function setFilm(example) {
   selection.clear()
+  manualGenreMix = false
   if (example) exampleIds.forEach(id => selection.set(id, 100))
   commercial.value = example ? '6.3' : '5.0'
   artistic.value = example ? '5.4' : '5.0'
   search.value = ''
   showingExample = example
   showAll = false
-  syncPrimarySteppers.forEach(sync => sync())
-  refreshSelection()
+  closePicker()
+  renderSelection()
+  saveFilmChanges({ ...selectionChanges(), commercial: commercial.value, artistic: artistic.value })
 }
 
 function announce(message) {
@@ -141,25 +286,18 @@ function announce(message) {
 }
 
 function setTagSelected(id, selected) {
-  const previousGenres = selectedGenres()
-  const previousShares = previousGenres.map(genre => selection.get(genre))
-  const wasEven = previousGenres.length < 2 || Math.max(...previousShares) - Math.min(...previousShares) <= 1
-  if (selected) selection.set(id, selection.get(id) ?? 100)
+  const isGenre = tagsById.get(id).category === 'Genre'
+  if (selected) selection.set(id, selection.get(id) ?? (isGenre && manualGenreMix ? 0 : 100))
   else selection.delete(id)
 
-  if (tagsById.get(id).category === 'Genre') {
+  if (isGenre) {
     const genres = selectedGenres()
-    if (selected && !wasEven) {
-      const newShare = Math.round(100 / genres.length)
-      selection.set(id, newShare)
-      distributeGenrePercentages(previousGenres, 100 - newShare)
-    } else {
-      distributeGenrePercentages(genres, 100, { evenly: wasEven })
-    }
+    if (genres.length < 2) manualGenreMix = false
+    if (!manualGenreMix) distributeGenrePercentages(genres, true)
   }
   showingExample = false
   renderSelection()
-  refreshResults()
+  saveFilmChanges(selectionChanges())
   announce(tagsById.get(id).name + (selected ? ' added.' : ' removed.'))
 }
 
@@ -173,20 +311,25 @@ function closePicker() {
 }
 
 function positionPicker() {
-  if (tagPopup.hidden) return
+  positionPopover(tagPicker, tagPopup, tagMenuHeader.offsetHeight + tagOptions.scrollHeight + 2)
+  positionPopover(filmPicker, filmPopup, filmOptions.scrollHeight + 2)
+}
+
+function positionPopover(trigger, popup, contentHeight) {
+  if (popup.hidden) return
   const viewport = window.visualViewport
   const top = viewport?.offsetTop ?? 0
   let bottom = top + (viewport?.height ?? window.innerHeight)
   if (quickBar.getClientRects().length) bottom = Math.min(bottom, quickBar.getBoundingClientRect().top)
 
-  const anchor = tagPicker.getBoundingClientRect()
+  const anchor = trigger.getBoundingClientRect()
   const gap = 14
   const above = Math.max(0, anchor.top - top - gap)
   const below = Math.max(0, bottom - anchor.bottom - gap)
-  const preferredHeight = Math.min(320, tagMenuHeader.offsetHeight + tagOptions.scrollHeight + 2)
+  const preferredHeight = Math.min(320, contentHeight)
   const placeAbove = below < preferredHeight && above > below
-  tagPopup.dataset.placement = placeAbove ? 'above' : 'below'
-  tagPopup.style.setProperty('--picker-height', Math.min(320, placeAbove ? above : below) + 'px')
+  popup.dataset.placement = placeAbove ? 'above' : 'below'
+  popup.style.setProperty('--picker-height', Math.min(320, placeAbove ? above : below) + 'px')
 }
 
 function pickerOption(id, height = 'min-h-11') {
@@ -257,19 +400,51 @@ function choosePickerOption(option) {
   positionPicker()
 }
 
-function movePickerFocus(options, direction) {
-  const previous = byId(search.getAttribute('aria-activedescendant'))
+function movePickerFocus(options, direction, control = search, scroller = tagOptions) {
+  const previous = byId(control.getAttribute('aria-activedescendant'))
   const index = previous ? options.indexOf(previous) + direction : direction > 0 ? 0 : options.length - 1
-  const next = options[Math.max(0, Math.min(index, options.length - 1))]
-  if (!next) return
-  previous?.removeAttribute('data-active')
-  next.setAttribute('data-active', '')
-  search.setAttribute('aria-activedescendant', next.id)
+  focusPickerOption(options[Math.max(0, Math.min(index, options.length - 1))], control, scroller)
+}
 
-  const menuBounds = tagOptions.getBoundingClientRect()
-  const nextBounds = next.getBoundingClientRect()
-  if (nextBounds.bottom > menuBounds.bottom) tagOptions.scrollTop += nextBounds.bottom - menuBounds.bottom + 4
-  if (nextBounds.top < menuBounds.top) tagOptions.scrollTop -= menuBounds.top - nextBounds.top + 4
+function focusPickerOption(option, control, scroller) {
+  if (!option) return
+  byId(control.getAttribute('aria-activedescendant'))?.removeAttribute('data-active')
+  option.setAttribute('data-active', '')
+  control.setAttribute('aria-activedescendant', option.id)
+
+  const menuBounds = scroller.getBoundingClientRect()
+  const nextBounds = option.getBoundingClientRect()
+  if (nextBounds.bottom > menuBounds.bottom) scroller.scrollTop += nextBounds.bottom - menuBounds.bottom + 4
+  if (nextBounds.top < menuBounds.top) scroller.scrollTop -= menuBounds.top - nextBounds.top + 4
+}
+
+function openFilmPicker() {
+  filmPicker.focus({ preventScroll: true })
+  closePicker()
+  filmPopup.hidden = false
+  filmPopup.inert = false
+  filmPicker.setAttribute('aria-expanded', 'true')
+  positionPicker()
+  focusPickerOption(filmOptions.querySelector('[aria-selected="true"]'), filmPicker, filmOptions)
+}
+
+function closeFilmPicker() {
+  filmPopup.inert = true
+  filmPopup.hidden = true
+  filmPicker.setAttribute('aria-expanded', 'false')
+  byId(filmPicker.getAttribute('aria-activedescendant'))?.removeAttribute('data-active')
+  filmPicker.removeAttribute('aria-activedescendant')
+}
+
+function chooseFilmOption(option) {
+  const film = films.get(option?.dataset.film)
+  if (!film) return
+  if (film.id !== activeFilmId) {
+    activateFilm(film)
+    announce(film.name + ' loaded.')
+  }
+  closeFilmPicker()
+  filmPicker.focus({ preventScroll: true })
 }
 
 function renderSelection() {
@@ -360,47 +535,39 @@ function renderGenreMix() {
   byId('genre-mix').hidden = genres.length < 2
   if (genres.length < 2) return
 
-  const syncFields = new Map()
   for (const id of genres) {
     const name = tagsById.get(id).name
     const field = element('div', 'flex min-w-0 items-center justify-between gap-1 rounded-md border border-line bg-field px-1.5 text-sm font-medium')
     const label = element('label', 'min-w-0 wrap-anywhere', name)
     const input = element('input', 'px-1 text-center')
-    Object.assign(input, { id: 'genre-weight-' + id, type: 'number', min: '0', max: '100', step: '1', value: selection.get(id), inputMode: 'numeric' })
+    Object.assign(input, { id: 'genre-weight-' + id, type: 'number', min: '0', max: '100', step: '0.01', value: selection.get(id), inputMode: 'decimal' })
     label.htmlFor = input.id
     input.setAttribute('aria-label', name + ' genre percentage')
 
-    let editStart
-    const savePercentage = (value, weights) => {
+    const savePercentage = value => {
       if (selection.get(id) === value) return
+      manualGenreMix = true
       selection.set(id, value)
-      distributeGenrePercentages(genres.filter(genre => genre !== id), 100 - value, { weights })
-      syncFields.forEach((sync, genre) => {
-        if (genre !== id) sync()
-      })
       showingExample = false
-      refreshResults()
+      saveFilmChanges(selectionChanges())
     }
     const adjustPercentage = amount => {
-      editStart = undefined
       const current = selection.get(id)
-      const next = Math.min(100, Math.max(0, current + amount))
+      const next = Math.min(100, Math.max(0, Math.round((current + amount) * 100) / 100))
       input.value = next
       input.setAttribute('aria-invalid', 'false')
       savePercentage(next)
       announce(name + ' genre percentage ' + next + '%.')
     }
     const finishEditing = () => {
-      editStart = undefined
-      syncFields.get(id)()
+      input.value = selection.get(id)
+      input.setAttribute('aria-invalid', 'false')
+      syncStepper()
     }
     input.addEventListener('input', () => {
       const valid = validNumber(input)
       input.setAttribute('aria-invalid', String(!valid))
-      if (!valid) return
-      // Keep peer proportions stable as a player types through intermediate values.
-      editStart ??= new Map(selection)
-      savePercentage(input.valueAsNumber, editStart)
+      if (valid) savePercentage(input.valueAsNumber)
     })
     input.addEventListener('blur', finishEditing)
     input.addEventListener('keydown', event => {
@@ -409,12 +576,7 @@ function renderGenreMix() {
     field.append(label, input)
     fields.append(field)
     const syncStepper = mountNumberStepper(input, name + ' genre percentage', {
-      width: 'my-1 w-19 shrink-0', increment: 5, read: () => selection.get(id), adjust: adjustPercentage
-    })
-    syncFields.set(id, () => {
-      input.value = selection.get(id)
-      input.setAttribute('aria-invalid', 'false')
-      syncStepper()
+      width: 'my-1 w-22 shrink-0', increment: 5, read: () => selection.get(id), adjust: adjustPercentage
     })
   }
 }
@@ -484,7 +646,7 @@ function renderCampaignDuration(list, timeline, durations) {
   }
 }
 
-function renderPlan(plan) {
+function renderPlan(plan, mixValid) {
   const top = byId('top-pick')
   const previousTopName = top.querySelector('strong')?.textContent
   const others = byId('other-picks')
@@ -501,7 +663,8 @@ function renderPlan(plan) {
   byId('top-label').hidden = !hasMatch
   byId('empty-guidance').hidden = selection.size > 0
   byId('result-message').textContent = plan ? 'No agencies match this audience and film focus.'
-    : selection.size ? 'Fix the film scores to update your picks.' : 'Add a story tag to get started.'
+    : !mixValid ? 'Set your genre mix to 100% to update your picks.'
+      : selection.size ? 'Fix the film scores to update your picks.' : 'Add a story tag to get started.'
   byId('audience-empty').hidden = Boolean(plan?.audiences.length)
   byId('holiday-empty').hidden = Boolean(plan?.holidays.length)
   lean.hidden = !plan
@@ -559,43 +722,65 @@ function validNumber(input) {
   return input.validity.valid && Number.isFinite(input.valueAsNumber)
 }
 
-function renderDistribution(weeks) {
+function mountDistributionCards() {
   const grid = byId('weeks')
-  grid.hidden = weeks.length === 0
+  return Array.from({ length: 8 }, (_, index) => {
+    const weekNumber = index + 1
+    const card = element('div', 'min-w-0 rounded-md border border-line bg-field px-2.5 py-2 first:border-brand/35 first:bg-brand/10')
+    const week = element('dt', 'text-xs font-semibold', 'Week ' + weekNumber)
+    const content = element('dd', 'mt-1 grid gap-2')
+    const total = element('span', 'min-w-0 wrap-anywhere text-xs text-muted tabular-nums')
+    total.dataset.screeningTotal = ''
+    content.append(total)
+    const meters = [['Owned used', 'bg-muted/85'], ['To rent', 'bg-brand']].map(([label, tone]) => {
+      const meter = element('div', 'grid gap-1')
+      const row = element('div', 'flex flex-wrap items-baseline justify-between gap-x-1 text-xs')
+      const amount = element('span', 'min-w-0 wrap-anywhere font-semibold tabular-nums')
+      amount.dataset.screenings = ''
+      row.append(element('span', 'text-muted', label), amount)
+      const track = element('span', 'block h-1 overflow-hidden rounded-full bg-control')
+      track.setAttribute('aria-hidden', 'true')
+      const bar = element('span', 'block h-full w-full origin-left scale-x-(--screening-ratio) rounded-full motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-ui ' + tone)
+      bar.dataset.screeningBar = ''
+      track.append(bar)
+      meter.append(row, track)
+      content.append(meter)
+      return { amount, bar }
+    })
+    card.append(week, content)
+    grid.append(card)
+    return { total, meters }
+  })
+}
+
+function refreshDistribution(scoresValid, plan, mixValid) {
+  const ownedValid = validNumber(owned)
+  const weeks = scoresValid && ownedValid && mixValid
+    ? estimateScreenings(selection, commercial.valueAsNumber, artistic.valueAsNumber, owned.valueAsNumber, plan) : []
   const peak = Math.max(1, ...weeks.map(week => week.target))
-  for (const [index, { target, toRent }] of weeks.entries()) {
-    let card = grid.children[index]
-    if (!card) {
-      card = element('div', 'min-w-0 rounded-md border border-line bg-field px-2.5 py-2 first:border-brand/35 first:bg-brand/10')
-      const week = element('dt', 'text-xs font-semibold', 'Week ' + (index + 1))
-      const content = element('dd', 'mt-1 grid gap-2')
-      const total = element('span', 'text-xs text-muted tabular-nums')
-      total.dataset.screeningTotal = ''
-      content.append(total)
-      for (const [label, tone] of [['Owned used', 'bg-muted/85'], ['To rent', 'bg-brand']]) {
-        const meter = element('div', 'grid gap-1')
-        meter.dataset.screeningMeter = ''
-        const row = element('div', 'flex flex-wrap items-baseline justify-between gap-x-1 text-xs')
-        const amount = element('span', 'font-semibold tabular-nums')
-        amount.dataset.screenings = ''
-        row.append(element('span', 'text-muted', label), amount)
-        const track = element('span', 'block h-1 overflow-hidden rounded-full bg-control')
-        track.setAttribute('aria-hidden', 'true')
-        const bar = element('span', 'block h-full w-full origin-left scale-x-(--screening-ratio) rounded-full motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-ui ' + tone)
-        bar.dataset.screeningBar = ''
-        track.append(bar)
-        meter.append(row, track)
-        content.append(meter)
-      }
-      card.append(week, content)
-      grid.append(card)
-    }
-    card.querySelector('[data-screening-total]').textContent = target.toLocaleString('en-US') + ' total'
-    const meters = card.querySelectorAll('[data-screening-meter]')
+
+  owned.setAttribute('aria-invalid', String(!ownedValid))
+  const error = byId('distribution-error')
+  error.hidden = ownedValid && scoresValid && mixValid
+  error.textContent = !mixValid ? 'Set your genre mix to 100% to update the forecast.'
+    : !scoresValid ? 'Enter Commercial and Artistic scores from 0 to 10.'
+      : !ownedValid ? 'Enter your owned screenings as a whole number of 0 or more.' : ''
+
+  const agency = plan?.agencies[0]
+  const campaign = byId('distribution-campaign')
+  campaign.textContent = mixValid ? 'Add story elements to include the recommended campaign.' : ''
+  if (plan && agency) {
+    const totalWeeks = plan.duration.reduce((sum, weeks) => sum + weeks, 0)
+    campaign.textContent = 'Assumes ' + agency.name + ' runs the suggested ' + totalWeeks + '-week campaign.'
+  }
+  byId('weeks').hidden = weeks.length === 0
+  for (const [weekIndex, { target, toRent }] of weeks.entries()) {
+    const { total, meters } = distributionCards[weekIndex]
+    total.textContent = target.toLocaleString('en-US') + ' total'
     for (const [index, value] of [target - toRent, toRent].entries()) {
-      const meter = meters[index]
-      meter.querySelector('[data-screenings]').textContent = value.toLocaleString('en-US')
-      meter.querySelector('[data-screening-bar]').style.setProperty('--screening-ratio', String(value / peak))
+      const { amount, bar } = meters[index]
+      amount.textContent = value.toLocaleString('en-US')
+      bar.style.setProperty('--screening-ratio', String(value / peak))
     }
   }
 }
@@ -603,7 +788,6 @@ function renderDistribution(weeks) {
 function refreshResults() {
   const commercialValid = validNumber(commercial)
   const artisticValid = validNumber(artistic)
-  const ownedValid = validNumber(owned)
   const scoresValid = commercialValid && artisticValid
   const score = commercial.valueAsNumber
   const hasEdits = selection.size > 0 || score !== 5 || artistic.valueAsNumber !== 5
@@ -612,22 +796,19 @@ function refreshResults() {
   byId('reset').hidden = !hasEdits
   commercial.setAttribute('aria-invalid', String(!commercialValid))
   artistic.setAttribute('aria-invalid', String(!artisticValid))
-  owned.setAttribute('aria-invalid', String(!ownedValid))
   const scoreError = byId('score-error')
   scoreError.hidden = scoresValid
   const fieldName = commercialValid ? 'the artistic score' : artisticValid ? 'the commercial score' : 'both scores'
   scoreError.textContent = scoresValid ? '' : 'Enter ' + fieldName + ' from 0 to 10 with up to two decimal places.'
-  const distributionError = byId('distribution-error')
-  distributionError.hidden = commercialValid && ownedValid
-  distributionError.textContent = commercialValid
-    ? 'Enter your owned screenings as a whole number of 0 or more.'
-    : 'Enter a commercial score from 0 to 10 to see the forecast.'
-  renderPlan(scoresValid && selection.size ? planCampaign(selection, score, artistic.valueAsNumber) : null)
-  renderDistribution(commercialValid && ownedValid ? estimateScreenings(score, owned.valueAsNumber) : [])
-  const distributionScore = byId('distribution-score')
-  distributionScore.hidden = !commercialValid
-  distributionScore.textContent = commercialValid ? 'Using a commercial score of ' + commercial.value + ' out of 10.' : ''
-  save()
+  const genres = selectedGenres()
+  const total = genreTotal(genres)
+  const mixValid = genres.length < 2 || total === 100
+  const totalLabel = byId('genre-total')
+  totalLabel.textContent = total + '% of 100%'
+  totalLabel.dataset.valid = String(mixValid)
+  const plan = scoresValid && mixValid && selection.size ? planCampaign(selection, score, artistic.valueAsNumber) : null
+  renderPlan(plan, mixValid)
+  refreshDistribution(scoresValid, plan, mixValid)
 }
 
 function refreshSelection() {
@@ -644,7 +825,7 @@ for (const agency of [...GUIDE.agencies].sort((a, b) => a.name.localeCompare(b.n
   identity.append(agencyMark(agency.name, 'size-8'), element('span', '', agency.name))
   name.append(identity)
   row.append(name, element('td', '', AGENCY_TYPES[agency.type]),
-    element('td', '', agency.targets.map(id => GUIDE.audiences[id]).join(', ')),
+    element('td', '', Object.keys(agency.adAudiences).map(id => GUIDE.audiences[id]).join(', ')),
     element('td', '', agency.level))
   byId('directory-rows').append(row)
 }
@@ -654,9 +835,97 @@ const syncPrimarySteppers = [
   mountNumberStepper(artistic, 'artistic score', { increment: 0.1 }),
   mountNumberStepper(owned, 'owned screenings', { width: 'w-30' })
 ]
-restore()
-syncPrimarySteppers.forEach(sync => sync())
-refreshSelection()
+const distributionCards = mountDistributionCards()
+activateFilm(loadFilms())
+filmPicker.addEventListener('click', () => {
+  if (filmPopup.hidden) openFilmPicker()
+  else closeFilmPicker()
+})
+filmPicker.addEventListener('blur', closeFilmPicker)
+filmPicker.addEventListener('keydown', event => {
+  if (event.isComposing) return
+  const options = [...filmOptions.children]
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault()
+    if (filmPopup.hidden) openFilmPicker()
+    else movePickerFocus(options, event.key === 'ArrowDown' ? 1 : -1, filmPicker, filmOptions)
+  } else if (!filmPopup.hidden && (event.key === 'Home' || event.key === 'End')) {
+    event.preventDefault()
+    focusPickerOption(event.key === 'Home' ? options[0] : options.at(-1), filmPicker, filmOptions)
+  } else if (!filmPopup.hidden && (event.key === 'Enter' || event.key === ' ')) {
+    event.preventDefault()
+    chooseFilmOption(byId(filmPicker.getAttribute('aria-activedescendant')))
+  } else if (!filmPopup.hidden && event.key === 'Escape') {
+    event.preventDefault()
+    closeFilmPicker()
+  }
+})
+filmOptions.addEventListener('mousedown', event => {
+  if (event.target.closest('[role="option"]')) event.preventDefault()
+})
+filmOptions.addEventListener('click', event => chooseFilmOption(event.target.closest('[role="option"]')))
+function createBlankFilm() {
+  let number = films.size + 1
+  const names = new Set([...films.values()].map(film => film.name))
+  while (names.has('Film ' + number)) number++
+  const id = crypto.getRandomValues(new Uint32Array(4)).join('-')
+  return createFilm(id, 'Film ' + number)
+}
+
+byId('new-film').addEventListener('click', () => {
+  activateFilm(createBlankFilm())
+  openFilmNameEditor()
+  announce('New film created.')
+})
+byId('rename-film').addEventListener('click', openFilmNameEditor)
+byId('cancel-rename-film').addEventListener('click', () => {
+  byId('rename-film-form').hidden = true
+  byId('rename-film').focus()
+})
+byId('rename-film-form').addEventListener('submit', event => {
+  event.preventDefault()
+  const name = byId('film-name').value.trim()
+  if (!name) return
+  saveFilmChanges({}, name)
+  event.currentTarget.hidden = true
+  filmPicker.focus()
+  announce('Film renamed to ' + name + '.')
+})
+byId('delete-film').addEventListener('click', () => {
+  const film = films.get(activeFilmId)
+  deleteFilmDialog.dataset.film = film.id
+  byId('delete-film-name').textContent = film.name
+  deleteFilmDialog.returnValue = ''
+  deleteFilmDialog.showModal()
+})
+deleteFilmDialog.addEventListener('close', () => {
+  if (deleteFilmDialog.returnValue !== 'delete') return
+  const film = films.get(deleteFilmDialog.dataset.film)
+  if (!film) return
+  films.delete(film.id)
+  activateFilm(films.values().next().value ?? createBlankFilm())
+  try {
+    localStorage.removeItem(filmStoragePrefix + film.id)
+  } catch {
+    // Remove it from this tab even when browser storage is unavailable.
+  }
+  filmPicker.focus()
+  announce(film.name + ' deleted.')
+})
+window.addEventListener('storage', event => {
+  if (!event.key?.startsWith(filmStoragePrefix)) return
+  const id = event.key.slice(filmStoragePrefix.length)
+  const value = localStorage.getItem(event.key)
+  if (value === null) {
+    films.delete(id)
+    if (deleteFilmDialog.open && deleteFilmDialog.dataset.film === id) deleteFilmDialog.close()
+    if (id === activeFilmId) activateFilm(films.values().next().value ?? createBlankFilm())
+    else renderFilmSwitcher()
+    return
+  }
+  const film = readSavedFilm(value, id)
+  if (film) applyFilmUpdate(film)
+})
 byId('example').addEventListener('click', () => {
   setFilm(true)
   byId('reset').focus()
@@ -700,6 +969,7 @@ tagPicker.addEventListener('keydown', event => {
 })
 document.addEventListener('pointerdown', event => {
   if (!tagPicker.contains(event.target)) closePicker()
+  if (!filmPicker.contains(event.target) && !filmPopup.contains(event.target)) closeFilmPicker()
 })
 search.addEventListener('keydown', event => {
   if (event.isComposing) return
@@ -732,11 +1002,18 @@ window.addEventListener('hashchange', openLinkedDetails)
 openLinkedDetails()
 for (const input of [commercial, artistic]) {
   input.addEventListener('input', () => {
-    showingExample = false
-    refreshResults()
+    saveFilmChanges({ [input.id]: input.value, showingExample: false })
   })
 }
-owned.addEventListener('input', refreshResults)
+owned.addEventListener('input', () => saveFilmChanges({ owned: owned.value }))
+byId('split-genres-evenly').addEventListener('click', () => {
+  manualGenreMix = false
+  distributeGenrePercentages(selectedGenres(), true)
+  showingExample = false
+  renderGenreMix()
+  saveFilmChanges(selectionChanges())
+  announce('Genres split evenly.')
+})
 byId('more').addEventListener('click', () => {
   showAll = !showAll
   refreshResults()
