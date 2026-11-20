@@ -1,3 +1,82 @@
+@theme {
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --color-canvas: #121310;
+  --color-panel: #1c1d18;
+  --color-popover: #25261f;
+  --color-field: #181914;
+  --color-ink: #f4f1e9;
+  --color-muted: #bab8a9;
+  --color-brand: #e5bc81;
+  --color-on-brand: #20190f;
+  --color-line: #37382f;
+  --color-control: #535448;
+  --color-tint: #303127;
+  --color-error: #f5a799;
+  --ease-ui: cubic-bezier(0.2, 0.65, 0.3, 1);
+  --animate-match-in: match-in 260ms var(--ease-ui) both;
+  @keyframes match-in {
+    from { opacity: .35; translate: 0 .2rem; }
+    to { opacity: 1; translate: 0 0; }
+  }
+}
+@layer base {
+  :focus-visible { @apply outline-2 outline-offset-2 outline-brand; }
+  input { @apply caret-brand tabular-nums; }
+  button, select, summary { @apply cursor-pointer; }
+}
+@utility stepper-frame {
+  @apply flex min-w-0 items-stretch rounded-md border border-control bg-field focus-within:border-brand has-[input[aria-invalid=true]]:border-error motion-safe:transition-colors motion-safe:duration-200;
+}
+@utility stepper-value {
+  @apply min-h-11 min-w-0 flex-1 rounded-l-md text-base [appearance:textfield] focus-visible:-outline-offset-2 aria-[invalid=true]:text-error [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none;
+}
+@utility outline-action {
+  @apply min-h-11 rounded-md border border-control px-2.5 text-sm font-semibold hover:bg-tint motion-safe:transition-[background-color,color,scale] motion-safe:duration-200 motion-safe:ease-ui motion-safe:active:scale-[.98];
+}
+@utility ghost-action {
+  @apply min-h-11 rounded-md px-2.5 text-sm font-semibold text-muted hover:bg-tint hover:text-ink motion-safe:transition-colors motion-safe:duration-200;
+}
+@utility picker-popover {
+  @apply absolute inset-x-0 top-[calc(100%+0.375rem)] z-40 flex max-h-(--picker-height) origin-top flex-col overflow-hidden rounded-md border border-control bg-popover shadow-lg data-[placement=above]:top-auto data-[placement=above]:bottom-[calc(100%+0.375rem)] data-[placement=above]:origin-bottom motion-safe:transition-[opacity,scale,display] motion-safe:transition-discrete motion-safe:duration-260 motion-safe:ease-ui motion-safe:starting:scale-[.98] motion-safe:starting:opacity-0 motion-safe:[&[hidden]]:scale-[.98] motion-safe:[&[hidden]]:opacity-0 motion-safe:[&[hidden]]:duration-200;
+}
+@utility disclosure-trigger {
+  @apply flex min-h-11 list-none items-center justify-between gap-2 hover:text-brand motion-safe:transition-colors motion-safe:duration-200 [&::-webkit-details-marker]:hidden;
+}
+@utility disclosure-chevron {
+  @apply mr-1 size-2 shrink-0 -translate-y-0.5 rotate-45 border-r border-b border-muted group-open:translate-y-0.5 group-open:rotate-[225deg] motion-safe:transition-transform motion-safe:duration-280 motion-safe:ease-ui;
+}
+@utility ui-icon {
+  @apply size-4 shrink-0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+@utility agency-logo {
+  @apply shrink-0 rounded-md border border-line bg-black bg-no-repeat;
+  background-image: url("./assets/advertiser-reference.png");
+  background-size: 728.813559% 600.847458%;
+}
+@utility animated-disclosure {
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (interpolate-size: allow-keywords) and selector(details::details-content) {
+      interpolate-size: allow-keywords;
+      &::details-content {
+        block-size: 0;
+        opacity: 0;
+        overflow: clip;
+        transition: block-size 280ms var(--ease-ui), opacity 240ms var(--ease-ui),
+          content-visibility 280ms allow-discrete;
+      }
+      &[open]::details-content {
+        block-size: auto;
+        opacity: 1;
+      }
+    }
+  }
+}
+
 @font-face {
   font-family: "Barlow Condensed";
   src: url("./assets/barlow-condensed-bold.woff2") format("woff2");
