@@ -729,7 +729,10 @@ function mountDistributionCards() {
     const card = element('div', 'min-w-0 rounded-md border border-line bg-field px-2.5 py-2 first:border-brand/35 first:bg-brand/10')
     const week = element('dt', 'text-xs font-semibold', 'Week ' + weekNumber)
     const content = element('dd', 'mt-1 grid gap-2')
-    const meters = [['Owned capacity', 'bg-muted/85'], ['To rent', 'bg-brand']].map(([label, tone]) => {
+    const total = element('span', 'min-w-0 wrap-anywhere text-xs text-muted tabular-nums')
+    total.dataset.screeningTotal = ''
+    content.append(total)
+    const meters = [['Owned used', 'bg-muted/85'], ['To rent', 'bg-brand']].map(([label, tone]) => {
       const meter = element('div', 'grid gap-1')
       const row = element('div', 'flex flex-wrap items-baseline justify-between gap-x-1 text-xs')
       const amount = element('span', 'min-w-0 wrap-anywhere font-semibold tabular-nums')
@@ -746,31 +749,32 @@ function mountDistributionCards() {
     })
     card.append(week, content)
     grid.append(card)
-    return meters
+    return { total, meters }
   })
 }
 
 function refreshDistribution(commercialValid) {
   const ownedValid = validNumber(owned)
   const capacity = owned.valueAsNumber
-  const rentals = commercialValid && ownedValid
-    ? estimateScreenings(commercial.valueAsNumber, capacity) : []
+  const totals = commercialValid ? estimateScreenings(commercial.valueAsNumber) : []
 
   owned.setAttribute('aria-invalid', String(!ownedValid))
   const error = byId('distribution-error')
   error.hidden = ownedValid && commercialValid
   error.textContent = !commercialValid ? 'Enter a Commercial score from 0 to 10.'
     : !ownedValid ? 'Enter your owned screenings as a whole number of 0 or more.' : ''
-  byId('weeks').hidden = rentals.length === 0
-  if (!rentals.length) return
+  byId('weeks').hidden = totals.length === 0
+  if (!totals.length) return
 
-  const peak = Math.max(1, capacity, ...rentals)
-  for (const [weekIndex, toRent] of rentals.entries()) {
-    const meters = distributionCards[weekIndex]
-    for (const [index, value] of [capacity, toRent].entries()) {
+  const peak = Math.max(1, ...totals)
+  for (const [weekIndex, target] of totals.entries()) {
+    const { total, meters } = distributionCards[weekIndex]
+    total.textContent = target.toLocaleString('en-US') + ' total'
+    const ownedUsed = Math.min(capacity, target)
+    for (const [index, value] of [ownedUsed, target - ownedUsed].entries()) {
       const { amount, bar } = meters[index]
-      amount.textContent = value.toLocaleString('en-US')
-      bar.style.setProperty('--screening-ratio', String(value / peak))
+      amount.textContent = ownedValid ? value.toLocaleString('en-US') : '–'
+      bar.style.setProperty('--screening-ratio', String(ownedValid ? value / peak : 0))
     }
   }
 }

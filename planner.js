@@ -58,14 +58,13 @@ function planCampaign(selection, commercial, artistic) {
   return { lean, audiences, agencies, holidays, duration: [6, 4, commercial >= 9 ? 4 : 0] }
 }
 
-// The release 2.18.0 distribution formula decays the Week 2 rental gap.
-function estimateScreenings(commercial, owned) {
-  const openingGap = Math.max(0, commercial * 2 * 1000 - owned)
-  let rentalGap = Math.max(0, commercial * 1000 - owned)
+function estimateScreenings(commercial) {
+  const weekTwo = Math.round(commercial * 1000)
+  const totals = [weekTwo * 2, weekTwo]
 
-  return Array.from({ length: 8 }, (_, week) => {
-    if (week > 1) rentalGap *= 0.8
-    const round = week < 4 ? Math.ceil : Math.floor
-    return round(week === 0 ? openingGap : rentalGap)
-  })
+  for (let weeksAfterWeekTwo = 1; weeksAfterWeekTwo <= 6; weeksAfterWeekTwo++) {
+    const total = weekTwo * 4 ** weeksAfterWeekTwo / 5 ** weeksAfterWeekTwo
+    totals.push(weeksAfterWeekTwo <= 2 ? Math.ceil(total) : Math.floor(total))
+  }
+  return totals
 }

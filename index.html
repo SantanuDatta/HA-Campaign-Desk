@@ -286,7 +286,7 @@
                 <h3 class="flex items-center gap-2 text-base font-semibold" id="distribution-title">
                   <svg class="ui-icon size-4.5 text-brand" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-ticket"></use></svg> Distribution calculator
                 </h3>
-                <p class="mt-1 text-sm text-muted">Estimates rentals from your Commercial score and owned capacity.</p>
+                <p class="mt-1 text-sm text-muted">Estimates weekly screenings and rentals from your Commercial score and owned capacity.</p>
               </div>
               <div class="ml-auto grid justify-items-end gap-1.5">
                 <label class="text-sm font-medium text-ink" for="owned">Owned screenings</label>
@@ -295,12 +295,12 @@
             </div>
             <p class="mt-2 text-sm text-muted" id="owned-help">Enter the screenings you can assign to this film each week.</p>
             <p class="mt-2 text-sm text-error" id="distribution-error" hidden></p>
-            <dl class="mt-4 grid grid-cols-2 gap-2 @min-[30rem]:grid-cols-4" id="weeks" aria-label="Weekly owned capacity and estimated rentals" hidden></dl>
+            <dl class="mt-4 grid grid-cols-2 gap-2 @min-[30rem]:grid-cols-4" id="weeks" aria-label="Weekly screening totals, owned screenings used, and estimated rentals" hidden></dl>
             <details class="group mt-2 border-t border-line">
               <summary class="disclosure-trigger text-sm font-medium text-muted">How the estimate works <span class="disclosure-chevron" aria-hidden="true"></span></summary>
               <div class="grid gap-2 pb-2 text-sm text-muted">
-                <p>Week 1 starts at 2,000 screenings per Commercial score point. Week 2 starts at 1,000 per point. The calculator subtracts your owned screenings for those two weeks, then reduces the Week 2 rental estimate by 20% each week.</p>
-                <p>Owned capacity is the number you can assign each week. Both bars use the largest capacity or rental value shown as their scale.</p>
+                <p>Week 1 is 2,000 screenings per Commercial score point. Week 2 is 1,000 per point. From Week 3 through Week 8, each week’s total is 20% lower than the previous week’s.</p>
+                <p>Owned screenings cover as much of each week’s total as possible. Rentals cover the remaining screenings. Both bars use the largest weekly total as their scale.</p>
               </div>
             </details>
           </section>
@@ -365,7 +365,7 @@
         </section>
         <section aria-labelledby="source-forecast">
           <h3 class="font-semibold text-ink" id="source-forecast">Forecast assumptions</h3>
-          <p class="mt-1">The distribution estimate uses your Commercial score and the owned screenings you enter. In-game attendance can vary with advertising, holidays, studio perks, and competition.</p>
+          <p class="mt-1">Commercial score sets the weekly totals. Your owned screenings determine how many you need to rent each week. Advertising, holidays, and competition can affect in-game attendance.</p>
         </section>
       </div>
     </details>
