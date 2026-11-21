@@ -18,7 +18,7 @@ const owned = byId('owned')
 const filmPicker = byId('saved-film')
 const filmPopup = byId('film-popup')
 const filmOptions = byId('film-options')
-const deleteFilmDialog = byId('delete-film-dialog')
+const filmToast = byId('film-toast')
 const sortedTags = [...GUIDE.tags].sort((a, b) => a.name.localeCompare(b.name)).map(tag => ({
   ...tag, searchText: (tag.name + ' ' + tag.id.replaceAll('_', ' ') + ' ' + tag.category).toLowerCase()
 }))
@@ -48,6 +48,7 @@ let showingExample = false
 let manualGenreMix = false
 let showAll = false
 let browseCategory = ''
+let filmToastTimer
 
 function element(tag, className, text) {
   const node = document.createElement(tag)
@@ -283,6 +284,19 @@ function setFilm(example) {
 
 function announce(message) {
   byId('status').textContent = message
+}
+
+function showFilmToast(message, icon = 'check') {
+  filmToast.replaceChildren(
+    lucideIcon(icon, 'ui-icon mt-0.5 text-brand'),
+    element('p', 'min-w-0 wrap-anywhere', message)
+  )
+  filmToast.hidden = false
+  clearTimeout(filmToastTimer)
+  filmToastTimer = setTimeout(() => {
+    filmToast.hidden = true
+  }, 4000)
+  announce(message)
 }
 
 function setTagSelected(id, selected) {
@@ -537,9 +551,9 @@ function renderGenreMix() {
 
   for (const id of genres) {
     const name = tagsById.get(id).name
-    const field = element('div', 'flex min-w-0 items-center justify-between gap-1 rounded-md border border-line bg-field px-1.5 text-sm font-medium')
-    const label = element('label', 'min-w-0 wrap-anywhere', name)
-    const input = element('input', 'px-1 text-center')
+    const field = element('div', 'group/stepper relative min-w-0')
+    const label = element('label', 'stepper-label bg-canvas', name)
+    const input = element('input', 'px-2.5 text-left font-semibold tabular-nums')
     Object.assign(input, { id: 'genre-weight-' + id, type: 'number', min: '0', max: '100', step: '0.01', value: selection.get(id), inputMode: 'decimal' })
     label.htmlFor = input.id
     input.setAttribute('aria-label', name + ' genre percentage')
@@ -576,7 +590,7 @@ function renderGenreMix() {
     field.append(label, input)
     fields.append(field)
     const syncStepper = mountNumberStepper(input, name + ' genre percentage', {
-      width: 'my-1 w-22 shrink-0', increment: 5, read: () => selection.get(id), adjust: adjustPercentage
+      width: 'w-full', increment: 5, read: () => selection.get(id), adjust: adjustPercentage
     })
   }
 }
@@ -798,7 +812,7 @@ function refreshResults() {
   const total = genreTotal(genres)
   const mixValid = genres.length < 2 || total === 100
   const totalLabel = byId('genre-total')
-  totalLabel.textContent = total + '% of 100%'
+  totalLabel.textContent = mixValid ? 'Total ' + total + '%' : total + '% of 100%'
   totalLabel.dataset.valid = String(mixValid)
   const plan = scoresValid && mixValid && selection.size ? planCampaign(selection, score, artistic.valueAsNumber) : null
   renderPlan(plan, mixValid)
@@ -827,7 +841,7 @@ for (const agency of [...GUIDE.agencies].sort((a, b) => a.name.localeCompare(b.n
 const syncPrimarySteppers = [
   mountNumberStepper(commercial, 'commercial score', { increment: 0.1 }),
   mountNumberStepper(artistic, 'artistic score', { increment: 0.1 }),
-  mountNumberStepper(owned, 'owned screenings', { width: 'w-30' })
+  mountNumberStepper(owned, 'owned screenings')
 ]
 const distributionCards = mountDistributionCards()
 activateFilm(loadFilms())
@@ -858,18 +872,18 @@ filmOptions.addEventListener('mousedown', event => {
   if (event.target.closest('[role="option"]')) event.preventDefault()
 })
 filmOptions.addEventListener('click', event => chooseFilmOption(event.target.closest('[role="option"]')))
-function createBlankFilm() {
+function createBlankFilm(state) {
   let number = films.size + 1
   const names = new Set([...films.values()].map(film => film.name))
   while (names.has('Film ' + number)) number++
   const id = crypto.getRandomValues(new Uint32Array(4)).join('-')
-  return createFilm(id, 'Film ' + number)
+  return createFilm(id, 'Film ' + number, state)
 }
 
 byId('new-film').addEventListener('click', () => {
-  activateFilm(createBlankFilm())
-  openFilmNameEditor()
-  announce('New film created.')
+  const film = createBlankFilm({ owned: validNumber(owned) ? owned.value : owned.defaultValue })
+  activateFilm(film)
+  showFilmToast(film.name + ' created.', 'plus')
 })
 byId('rename-film').addEventListener('click', openFilmNameEditor)
 byId('cancel-rename-film').addEventListener('click', () => {
@@ -883,19 +897,11 @@ byId('rename-film-form').addEventListener('submit', event => {
   saveFilmChanges({}, name)
   event.currentTarget.hidden = true
   filmPicker.focus()
-  announce('Film renamed to ' + name + '.')
+  showFilmToast('Renamed to ' + name + '.', 'pencil')
 })
-byId('delete-film').addEventListener('click', () => {
+byId('delete-film').addEventListener('click', event => {
+  if (event.detail > 1) return
   const film = films.get(activeFilmId)
-  deleteFilmDialog.dataset.film = film.id
-  byId('delete-film-name').textContent = film.name
-  deleteFilmDialog.returnValue = ''
-  deleteFilmDialog.showModal()
-})
-deleteFilmDialog.addEventListener('close', () => {
-  if (deleteFilmDialog.returnValue !== 'delete') return
-  const film = films.get(deleteFilmDialog.dataset.film)
-  if (!film) return
   films.delete(film.id)
   activateFilm(films.values().next().value ?? createBlankFilm())
   try {
@@ -904,7 +910,7 @@ deleteFilmDialog.addEventListener('close', () => {
     // Remove it from this tab even when browser storage is unavailable.
   }
   filmPicker.focus()
-  announce(film.name + ' deleted.')
+  showFilmToast(film.name + ' deleted.', 'trash')
 })
 window.addEventListener('storage', event => {
   if (!event.key?.startsWith(filmStoragePrefix)) return
@@ -912,7 +918,6 @@ window.addEventListener('storage', event => {
   const value = localStorage.getItem(event.key)
   if (value === null) {
     films.delete(id)
-    if (deleteFilmDialog.open && deleteFilmDialog.dataset.film === id) deleteFilmDialog.close()
     if (id === activeFilmId) activateFilm(films.values().next().value ?? createBlankFilm())
     else renderFilmSwitcher()
     return

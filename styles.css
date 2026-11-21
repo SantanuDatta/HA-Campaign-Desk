@@ -27,6 +27,9 @@
 @utility stepper-frame {
   @apply flex min-w-0 items-stretch rounded-md border border-control bg-field focus-within:border-brand has-[input[aria-invalid=true]]:border-error motion-safe:transition-colors motion-safe:duration-200;
 }
+@utility stepper-label {
+  @apply absolute top-0 left-2 z-10 max-w-[calc(100%-1rem)] -translate-y-1/2 cursor-text truncate px-1 text-xs leading-4 font-medium text-muted group-focus-within/stepper:text-brand;
+}
 @utility stepper-value {
   @apply min-h-11 min-w-0 flex-1 rounded-l-md text-base [appearance:textfield] focus-visible:-outline-offset-2 aria-[invalid=true]:text-error [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none;
 }

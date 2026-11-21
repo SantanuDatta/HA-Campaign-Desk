@@ -62,9 +62,11 @@ function estimateScreenings(commercial) {
   const weekTwo = Math.round(commercial * 1000)
   const totals = [weekTwo * 2, weekTwo]
 
-  for (let weeksAfterWeekTwo = 1; weeksAfterWeekTwo <= 6; weeksAfterWeekTwo++) {
-    const total = weekTwo * 4 ** weeksAfterWeekTwo / 5 ** weeksAfterWeekTwo
-    totals.push(weeksAfterWeekTwo <= 2 ? Math.ceil(total) : Math.floor(total))
+  const weeklyDrops = [40, 40, 50, 45, 40, 45]
+
+  for (const drop of weeklyDrops) {
+    const round = totals.length < 4 ? Math.ceil : Math.floor
+    totals.push(round(totals.at(-1) * (100 - drop) / 100))
   }
   return totals
 }
